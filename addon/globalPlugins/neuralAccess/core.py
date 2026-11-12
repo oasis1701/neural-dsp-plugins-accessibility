@@ -2975,6 +2975,23 @@ class AmpObject(UIA):
     def script_presetNext(self, gesture):
         self._presetStep(1, gesture)
 
+    # Comma and period by the key itself, on any keyboard layout (Hadi, 2026-11-12: "make so
+    # period and comma keys work for all keyboard layouts"). The bindings above go by the
+    # character the layout types, so on a layout whose comma key types a letter (Russian б, for
+    # one) they never match. Windows gives these two keys the same virtual key codes on every
+    # layout, VK_OEM_COMMA and VK_OEM_PERIOD, so a plain press of either is taken by its code
+    # when no binding answered. NVDA asks the user's own Input Gestures settings before this, so
+    # a key assigned elsewhere there still goes where the user sent it.
+    KEYS_BY_CODE = {0xBC: "presetPrevious", 0xBE: "presetNext"}
+
+    def getScript(self, gesture):
+        found = super(AmpObject, self).getScript(gesture)
+        if found is None and not getattr(gesture, "modifiers", None):
+            name = self.KEYS_BY_CODE.get(getattr(gesture, "vkCode", None))
+            if name:
+                found = getattr(self, "script_" + name, None)
+        return found
+
     def _singleKey(self, gesture, hook, *args):
         """Hands one of the single keys to its profile hook, or to the amplifier as typing."""
         if self._typingIntoText(gesture):

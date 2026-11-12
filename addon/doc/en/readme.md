@@ -89,9 +89,10 @@ command is **NVDA+Shift+G**, because the laptop layout uses NVDA+Shift+A for say
 
 The single keys - A, C, T, L, M, comma, period, P, G, D, R and the brackets - need no NVDA key.
 **In a text box they type**, like any key: a knob's value box, the delay's tempo box and the
-tuner's reference pitch are text boxes. Leave the box, then press the key. The
-brackets, comma and period work with the Persian keyboard layout active as well as the English
-one. Every single key works on all three amplifiers except L and M, which the Mesa answers with
+tuner's reference pitch are text boxes. Leave the box, then press the key. Comma and period
+work with any keyboard layout, because the add-on knows them by the key itself, whatever
+character the layout types on it. The brackets work with the English and Persian layouts; on
+another layout, assign them in NVDA's Input Gestures dialog. Every single key works on all three amplifiers except L and M, which the Mesa answers with
 "Not available on this amplifier", and C and Control+A, which only the Nolly X has.
 
 Every command appears under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog, so you can reassign
