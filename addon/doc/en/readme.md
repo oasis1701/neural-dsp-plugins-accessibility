@@ -61,8 +61,6 @@ All of these keys work while you are inside the plug-in.
 - **Enter** on a knob that has a value box takes you into the box. Type a value and press Enter to set it.
 - **M** or the **Applications key** opens the focused control's right-click menu. Reset parameter puts the control back to its default value. Enable MIDI Learn assigns a MIDI control to it. Choose it, then move a knob or press a switch on your MIDI controller, and NVDA says "MIDI learned". Show MIDI Map opens the MIDI mappings window.
 
-A knob says its value. Knobs with no printed numbers also say where their pointer points, such as "2 o'clock".
-
 ### Sections
 
 - **Shift** with a section's number says whether that section is on or off.
