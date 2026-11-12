@@ -10,7 +10,7 @@ This add-on is an independent project. It is not made by, affiliated with or end
 
 In REAPER, open the plug-in's FX window and press **NVDA+Shift+A** to move into the plug-in. Press it again to go back to the REAPER control you came from. With NVDA's laptop keyboard layout the key is **NVDA+Shift+G**. This is the only key that works outside the plug-in.
 
-Tab goes round in a circle inside the plug-in and never leaves it, so NVDA+Shift+A is how you leave. The arrow keys do nothing on buttons and switches, so they cannot drop you out into REAPER's FX window either.
+Tab goes round in a circle inside the plug-in and never leaves it. There are two ways out. NVDA+Shift+A takes you back to the REAPER control you came from, with the FX window still open. Escape closes the FX window and takes you back to REAPER's main window, and the plug-in stays on the track. The arrow keys do nothing on buttons and switches, so they cannot drop you out by accident.
 
 ## The signal chain
 
