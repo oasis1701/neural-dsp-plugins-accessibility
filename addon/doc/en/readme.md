@@ -91,8 +91,6 @@ All of these keys work while you are inside the plug-in.
 - **Comma** and **Period** load the previous and next preset and say its name.
 - In the list of presets, Up and Down move, Right or Enter opens a folder, Left closes it, and Enter on a preset loads it.
 
-RESET, one of the More preset actions, asks you to press Enter a second time before it acts. DELETE asks with the plug-in's own question, with Cancel chosen first.
-
 ### Gate and doubler
 
 - **G** switches the noise gate on or off.
