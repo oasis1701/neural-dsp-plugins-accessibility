@@ -21,18 +21,18 @@ The Petrucci X has seven sections.
 - **1, Wah Comp.** A wah pedal and a compressor.
 - **2, Pre FX.** Overdrive, phaser, chorus and flanger pedals.
 - **3, Amp.** Four amplifiers, Piezo, Clean, Rhythm and Lead.
-- **4, Cab.** Two microphones, each with its own room. The Piezo amplifier has no Cab section.
+- **4, Cab.** Two microphones, each with its own room. Includes a custom IR loader for both. The Piezo amplifier has no Cab section.
 - **5, EQ.** A four-band equaliser with high-pass and low-pass filters. The Piezo amplifier has no EQ section.
 - **6, Volume.** A volume pedal.
-- **7, Post FX.** Chorus, delay and reverb.
+- **7, Post FX.** Chorus, delay and reverb rack-mounted units.
 
 The Nolly X has five sections.
 
-- **1, Pre Effects.** A compressor, Overdrive 1, Delay 1 and Overdrive 2.
+- **1, Pre Effects.** Compressor, Overdrive 1, Delay 1 and Overdrive 2 pedals.
 - **2, Amp.** Four amplifiers, Clean, Crunch, Rhythm and Lead.
-- **3, Cab.** Two microphones, each with a room send.
+- **3, Cab.** Two microphones, each with a room send. Includes a custom IR loader for both.
 - **4, EQ.** A nine-band graphic equaliser with two voicings, Original and Nolly's mod, and high-pass and low-pass filters.
-- **5, Post Effects.** Delay 2 and a reverb.
+- **5, Post Effects.** Delay 2 and reverb pedals.
 
 On the Nolly X the amplifier and the cabinet are linked, so choosing an amplifier brings its own cabinet. Unlink them with Control+A to pair any amplifier with any cabinet.
 
