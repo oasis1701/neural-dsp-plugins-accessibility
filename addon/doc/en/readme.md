@@ -110,3 +110,5 @@ Both say the new state, and focus stays where it was.
 - In a text box, such as a knob's value box or the tuner's reference pitch, the single letter and number keys type. Tab out of the box first, then press the key.
 - Comma, Period and the brackets work with any keyboard layout. If your layout types something else on the bracket keys, they are still the two keys to the right of P.
 - Every command is listed under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog, where you can change its key.
+- RESET, under More preset actions, puts every control in the plug-in back to its default and cannot be undone. The first Enter only says what it would do. Press Enter again within ten seconds to carry it out. Any other key cancels it.
+- DELETE, shown for your own presets, asks with the plug-in's own question before it deletes. Cancel is chosen first, so Enter deletes only after you Tab to "Yes, delete".
