@@ -1,24 +1,20 @@
 # Neural DSP Plugins Accessibility
 
-This NVDA add-on makes Neural DSP guitar amplifier plug-ins usable with the NVDA screen reader. It works with the standalone applications and with the VST3 plug-ins inside a host such as REAPER. It covers three plug-ins.
+This NVDA add-on makes two Neural DSP guitar plug-ins usable with a screen reader, the Archetype Petrucci X and the Archetype Nolly X. It names their controls, says knob values and switch positions, and adds single keys for things a mouse user does at a glance, such as switching sections, stepping through presets, running the tuner and checking levels.
 
-- Archetype Petrucci X
-- Archetype Nolly X
-- Mesa Boogie Mark IIC+ Suite
+For the best results, install the VST3 versions of the plug-ins and use them inside REAPER. That is where the add-on is tested. The standalone applications are still being worked on and tested.
 
-The plug-ins report their controls to Windows but leave most of them without names, so a screen reader has little to say. The add-on names the controls, speaks knob values in their real units, reads switch positions off the screen, and lets you turn knobs with the arrow keys. It also adds keys for things a mouse user does at a glance. Those include switching sections, stepping through presets, running the tuner and checking input and output levels.
-
-This is an early release. It has been tested with NVDA 2026.3.1 and with the plug-ins inside REAPER. The standalone applications use the same code as the plug-ins. The Mesa's and the Petrucci X's standalones were tried early on, before most of the recent work, and the Nolly X's has not been tried yet.
-
-Only the X versions of the two Archetypes are covered. The add-on does not recognise the original Archetype: Petrucci or Archetype: Nolly and leaves them alone.
+This is an early release, tested with NVDA 2026.3.1.
 
 ## Installing
 
 Download the `.nvda-addon` file from the [Releases page](https://github.com/oasis1701/neural-dsp-plugins-accessibility/releases), open it, confirm the installation in NVDA, and restart NVDA when it asks.
 
+In REAPER, open the plug-in's FX window and press NVDA+Shift+A to step into the plug-in. Press it again to step back out.
+
 ## User guide
 
-The full guide, with every key, is in [addon/doc/en/readme.md](addon/doc/en/readme.md). After installing, the add-on's Help action in NVDA's Add-on Store opens the same guide. Every command is listed under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog, where you can reassign it.
+The [user guide](addon/doc/en/readme.md) lists every key. After installing, the add-on's Help action in NVDA's Add-on Store opens the same guide.
 
 ## Building from source
 
