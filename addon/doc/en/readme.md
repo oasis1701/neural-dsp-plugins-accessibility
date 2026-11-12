@@ -93,4 +93,3 @@ Both say the new state, and focus stays where it was.
 - In a text box, such as a knob's value box or the tuner's reference pitch, the single letter and number keys type. Tab out of the box first, then press the key.
 - Comma, Period and the brackets work with any keyboard layout. If your layout types something else on the bracket keys, they are still the two keys to the right of P.
 - Every command is listed under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog, where you can change its key.
-- Support for the Nolly X is newer than for the Petrucci X, and some of it has not been tried by ear yet. That includes the Amp and Cab sections, the tuner and the MIDI mappings window.

@@ -8,7 +8,7 @@ This is an early release, tested with NVDA 2026.3.1.
 
 ## Installing
 
-Download the `.nvda-addon` file from the [Releases page](https://github.com/oasis1701/neural-dsp-plugins-accessibility/releases), open it, confirm the installation in NVDA, and restart NVDA when it asks.
+Download the `.nvda-addon` file from the [latest release](https://github.com/oasis1701/neural-dsp-plugins-accessibility/releases/latest), open it, confirm the installation in NVDA, and restart NVDA when it asks.
 
 In REAPER, open the plug-in's FX window and press NVDA+Shift+A to step into the plug-in. Press it again to step back out.
 

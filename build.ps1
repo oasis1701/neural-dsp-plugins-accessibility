@@ -52,9 +52,8 @@ $($body.ToString())
 }
 
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
-$zip = Join-Path $OutDir ("{0}-{1}.zip" -f $name, $version)
 $addon = Join-Path $OutDir ("{0}-{1}.nvda-addon" -f $name, $version)
-foreach ($p in @($zip, $addon)) { if (Test-Path $p) { Remove-Item $p -Force } }
+if (Test-Path $addon) { Remove-Item $addon -Force }
 
 # Exclude __pycache__ so stale bytecode never ships.
 $staging = Join-Path $env:TEMP ("neuralAccessBuild_" + [System.Guid]::NewGuid().ToString('N'))
@@ -62,8 +61,23 @@ New-Item -ItemType Directory -Path $staging | Out-Null
 Copy-Item -Path (Join-Path $addonDir '*') -Destination $staging -Recurse -Force
 Get-ChildItem -Path $staging -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
 
-Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zip -Force
-Rename-Item -Path $zip -NewName (Split-Path $addon -Leaf)
+# Written entry by entry rather than with Compress-Archive, which in Windows PowerShell 5.1
+# stores paths with backslashes. A zip's paths use forward slashes.
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$stream = [System.IO.File]::Open($addon, [System.IO.FileMode]::Create)
+$archive = New-Object System.IO.Compression.ZipArchive($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    $prefix = (Resolve-Path $staging).Path.TrimEnd('\') + '\'
+    foreach ($file in Get-ChildItem -Path $staging -Recurse -File) {
+        $entryName = $file.FullName.Substring($prefix.Length).Replace('\', '/')
+        [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $archive, $file.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+    }
+} finally {
+    $archive.Dispose()
+    $stream.Dispose()
+}
 Remove-Item $staging -Recurse -Force
 
 Write-Host ("built {0}" -f $addon)
