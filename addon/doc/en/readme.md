@@ -14,7 +14,7 @@ Tab goes round in a circle inside the plug-in and never leaves it. There are two
 
 ## The signal chain
 
-Your guitar goes through the plug-in's sections from left to right, and the number keys follow the same order. Any section can be switched off whole, and the sound then skips it.
+Your guitar goes through the plug-in's sections from left to right, and the number keys follow the same order. Any section can be switched off independently, and the sound then skips it.
 
 The Petrucci X has seven sections.
 
