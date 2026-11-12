@@ -1418,62 +1418,6 @@ class ArchetypeXProfile(engine.AmpProfile):
             return "%.1f %s" % (raw, unit)
         return super(ArchetypeXProfile, self).formatValue(label, raw, minimum, maximum, unitText)
 
-    def announceAllParts(self, controller):
-        parts = []
-        tops = self.topKnobElements(controller)
-        for position, (x, rect, element) in enumerate(tops):
-            if position >= len(TOP_KNOB_NAMES):
-                break
-            name = TOP_KNOB_NAMES[position]
-            text = self._readoutTextForRect(controller, rect)
-            if text is None:
-                raw = _prop(element, PROP_RANGE_VALUE)
-                if raw is not None:
-                    text = self.formatValue(name, float(raw), 0.0, 1.0)
-            if text:
-                parts.append("%s %s" % (name, text))
-        # The current section's own knobs, from its landmark table.
-        view = self.viewOf(controller)
-        table = self.VIEW_SLIDER_LANDMARKS.get(view)
-        if table:
-            geometry = controller.clientGeometry()
-            if geometry:
-                left, top, width, height = geometry
-                for element in controller.findElements(controlType=CT_SLIDER):
-                    rect = _prop(element, PROP_BOUNDING_RECT)
-                    if not rect or len(rect) < 4:
-                        continue
-                    cx = (rect[0] + rect[2] / 2.0 - left) / width
-                    cy = (rect[1] + rect[3] / 2.0 - top) / height
-                    name = None
-                    for ly, lx, candidate in table:
-                        if abs(cy - ly) <= 0.02 and abs(cx - lx) <= 0.012:
-                            name = candidate
-                            break
-                    if not name or name.endswith("display"):
-                        continue
-                    name = self._syncedName(name, element)
-                    raw = _prop(element, PROP_RANGE_VALUE)
-                    if raw is None:
-                        continue
-                    minimum = float(_prop(element, PROP_RANGE_MIN, 0.0))
-                    maximum = float(_prop(element, PROP_RANGE_MAX, 1.0))
-                    text = self._readoutTextForRect(controller, rect)
-                    parts.append("%s %s" % (
-                        name, self.formatValue(name, float(raw), minimum, maximum, text)))
-        panel = self.ampPanel(controller)
-        if panel:
-            parts.append("%s amplifier" % panel["name"])
-            table = self.AMP_KNOB_TABLES[panel["index"]]
-            for position, (x, rect, element) in enumerate(panel["knobs"]):
-                if position >= len(table):
-                    break
-                raw = _prop(element, PROP_RANGE_VALUE)
-                if raw is None:
-                    continue
-                parts.append("%s %d percent" % (table[position], int(round(float(raw) * 100))))
-        return parts
-
     # ---------- actions (every one of them a real click) ----------
 
     def entryElement(self, controller, hwnd):
@@ -4043,40 +3987,6 @@ class ArchetypeXProfile(engine.AmpProfile):
         # another window is in front, and this starts it again. With no check on it does nothing.
         self._watchMeters(controller)
 
-    def diagnose(self, controller, obj):
-        """Walks the tuner detection step by step, recording where it stops and what it costs.
-        The first line is the spoken summary, empty unless the tuner window is open."""
-        lines = []
-        summary = ""
-        try:
-            lines.append("client geometry %r" % (controller.clientGeometry(),))
-            started = time.time()
-            items = self._sweep(controller)
-            lines.append("full sweep: %s in %.0f ms" % (
-                "failed" if items is None else "%d elements" % len(items), (time.time() - started) * 1000))
-            self._forgetTuner(controller)
-            state = self.tunerState(controller)
-            lines.append("tuner window %r" % (state["rect"] if state else None,))
-            if state:
-                summary = "Tuner window detected, %d controls." % len(state["children"])
-                for child in state["children"][:40]:
-                    lines.append("  %r %r %r" % (child[0], child[1], child[2]))
-                lines.append("parts %r" % (sorted((self._tunerParts(controller) or {}).keys()),))
-                started = time.time()
-                reading = self.tunerReading(controller)
-                lines.append("reading %r in %.0f ms" % (reading, (time.time() - started) * 1000))
-                lines.append("mode %r" % (self.tunerMode(controller),))
-            lines.append("focus object role %r name %r location %r" % (
-                getattr(obj, "role", None), getattr(obj, "name", None), getattr(obj, "location", None)))
-            lines.append("focus is tuner window %r, tuner child %r" % (
-                self._isTunerPanelObject(obj, controller), self._tunerChild(obj, controller) is not None))
-            lines.append("watching %r, editor foreground %r" % (
-                controller._tunerWatching, controller.editorIsForeground()))
-        except Exception:
-            log.info("neuralAccess: tuner diagnosis failed", exc_info=True)
-            lines.append("diagnosis raised; see the traceback above")
-        return [summary] + lines
-
     # ---------- DELETE and the plug-in's own question ----------
 
     def deleteDialog(self, controller):
@@ -4577,17 +4487,6 @@ class ArchetypeXProfile(engine.AmpProfile):
             callLater(150, poll, remaining - 1)
 
         callLater(600, poll, 8)
-
-    def leadToggle(self, controller):
-        """On this amp, NVDA+shift+L jumps straight to the Lead amplifier."""
-        selectors = self.selectorElements(controller)
-        if len(selectors) != len(self.ampModelNames):
-            return "Amplifier selectors not available."
-        if self.liveAmpIndex(controller) == 3:
-            return "Lead amplifier already selected."
-        controller.clickElement(selectors[3][2])
-        controller.invalidatePositional()
-        return "Lead amplifier"
 
     # ---------- custom impulse responses ----------
     #

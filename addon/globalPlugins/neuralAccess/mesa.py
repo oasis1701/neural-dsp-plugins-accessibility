@@ -1431,11 +1431,5 @@ class MesaProfile(engine.AmpProfile):
     def tuner(self, controller):
         return controller.pressByHelpText("Tuner")
 
-    def leadToggle(self, controller):
-        for prefix in self.ampPrefixes:
-            if controller.pressByHelpText("%sPull Lead" % prefix):
-                return "lead channel switch toggled"
-        return "Lead switch not available. Switch to the amp view first."
-
 
 PROFILE = MesaProfile()

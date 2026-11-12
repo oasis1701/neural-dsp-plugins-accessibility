@@ -41,10 +41,11 @@ engine.registerProfile(nolly.PROFILE)
 
 APP_MODULE = "neuraldsp"
 
-# The developer switch. Automatic captures write pictures to the Temp folder, which is for
-# working on the add-on and not for its users (Hadi, 2026-11-12: "auto capture needs to be
-# disabled for public release, so it wouldn't create images for users"). They are taken only
-# on a computer whose NVDA settings folder holds a file of this name. The file lives outside
+# The developer switch. Captures write pictures to the Temp folder, which is for working on
+# the add-on and not for its users (Hadi, 2026-11-12: "auto capture needs to be disabled for
+# public release, so it wouldn't create images for users", and the capture key "should only be
+# enabled as a developer setting"). The automatic captures and the capture key exist only on a
+# computer whose NVDA settings folder holds a file of this name. The file lives outside
 # the add-on, so no package ever carries it and an update leaves it in place. Read once;
 # creating or deleting the file takes effect when NVDA restarts.
 DEVELOPER_SWITCH = "neuralAccess-developer"
@@ -96,7 +97,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 log.exception("neuralAccess: could not register executable %r" % name)
         log.info("neuralAccess: registered %d executable spellings for app module %r"
                  % (len(self._registered), APP_MODULE))
-        developerSwitchOn()
+        if developerSwitchOn():
+            self.bindGesture("kb:NVDA+shift+c", "capture")
         # Every key NVDA is about to act on, so that a key other than Enter cancels a button's
         # "Press Enter again to confirm" (see core.armConfirm and core.noteGesture).
         self._gestureHook = getattr(inputCore, "decide_executeGesture", None)
@@ -397,9 +399,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if message:
             ui.message(message)
 
-    @script(description="Saves a picture and a list of every control of the amplifier as it is "
-                        "now, including any list or menu it has open, for working on this add-on.",
-            gesture="kb:NVDA+shift+c", category=engine.CATEGORY)
+    # Saves a picture and a list of every control of the amplifier as it is now, including any
+    # list or menu it has open, for working on this add-on. Bound to NVDA+Shift+C only with the
+    # developer switch on (Hadi, 2026-11-12), and given no description, so that nobody else has
+    # it in the Input Gestures dialog or loses NVDA's own NVDA+Shift+C (set column headers).
     def script_capture(self, gesture):
         processID = self._foregroundProcessID()
         controller = self._controllerFor(api.getFocusObject())
@@ -414,41 +417,3 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except Exception:
             log.info("neuralAccess: capture failed", exc_info=True)
             ui.message("Capture failed. The reason is in NVDA's log.")
-
-    # Deliberately not NVDA+shift+F12: the speechHistory add-on claims both NVDA+shift+F11 and
-    # F12 and wins, so a binding there never runs.
-    @script(description="Reports what the add-on can see: the focused object, its window, and "
-                        "whether it is the standalone or a plug-in inside a host.",
-            gesture="kb:NVDA+shift+g", category=engine.CATEGORY)
-    def script_diagnostics(self, gesture):
-        obj = api.getFocusObject()
-        appMod = getattr(obj, "appModule", None)
-        appName = getattr(appMod, "appName", "unknown")
-        modName = type(appMod).__module__ if appMod is not None else "none"
-        if isinstance(obj, engine.AmpObject):
-            controller = obj.ampController
-            profile = controller.profile if controller is not None else None
-            ampName = profile.displayName if profile is not None else "unknown"
-            where = "plug-in inside %s" % appName if (controller and controller.hosted) else "standalone"
-            message = ("%s amplifier, %s. Window %s, class %s. Application %s, app module %s."
-                       % (ampName, where, getattr(obj, "windowHandle", "?"),
-                          getattr(obj, "windowClassName", "?"), appName, modName))
-            if profile is not None and controller is not None:
-                try:
-                    lines = profile.diagnose(controller, obj)
-                except Exception:
-                    log.info("neuralAccess: profile diagnosis failed", exc_info=True)
-                    lines = []
-                for line in lines:
-                    if line:
-                        log.info("neuralAccess diagnose: %s" % line)
-                if lines and lines[0]:
-                    message = "%s %s" % (lines[0], message)
-        else:
-            hwnd = self._foregroundAmpWindow()
-            found = ("An amplifier window is in front: %s. Press NVDA shift F to step in." % hwnd) \
-                if hwnd else "No amplifier window in front."
-            message = "Not on an amplifier control. %s Application %s, app module %s." \
-                      % (found, appName, modName)
-        log.info("neuralAccess: %s" % message)
-        ui.message(message)

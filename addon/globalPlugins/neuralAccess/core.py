@@ -785,30 +785,6 @@ class AmpProfile(object):
         """The display text mirroring a slider, if the amp draws one."""
         return controller.readoutFor(obj.ampHelpText)
 
-    def announceAllParts(self, controller):
-        """Every knob in the current view with its value, as a list of spoken parts."""
-        sliders = controller.findElements(controlType=CT_SLIDER)
-        if not sliders:
-            return []
-        # Gather the display readouts once rather than searching the tree per knob.
-        controller.invalidateReadouts()
-        readouts = controller._collectReadouts()
-        parts = []
-        for element in sliders:
-            helpText = _prop(element, PROP_HELP_TEXT, "")
-            if not helpText:
-                continue
-            label, _amp = self.stripPrefix(helpText)
-            raw = _prop(element, PROP_RANGE_VALUE)
-            if raw is None:
-                continue
-            minimum = _prop(element, PROP_RANGE_MIN, 0.0)
-            maximum = _prop(element, PROP_RANGE_MAX, 1.0)
-            unitText = readouts.get(helpText)
-            spoken = self.formatValue(label, float(raw), float(minimum), float(maximum), unitText)
-            parts.append("%s %s" % (self.friendlyNames.get(label, label), spoken))
-        return parts
-
     def activeAmpModel(self, controller):
         """Which amplifier model is live, or None when it cannot be determined."""
         return None
@@ -891,21 +867,12 @@ class AmpProfile(object):
         """Called whenever one of this amplifier's controls gains focus."""
         pass
 
-    def diagnose(self, controller, obj):
-        """Extra lines for the NVDA+shift+G diagnostic, written to the log at info level. A
-        non-empty first line is also spoken, ahead of the usual report."""
-        return []
-
     def afterClick(self, controller, obj):
         """Called once Enter has been turned into a click on a control, before the click lands.
 
         Anything read here still describes the state before the press.
         """
         pass
-
-    def leadToggle(self, controller):
-        """The NVDA+shift+L quick toggle. Returns the message to speak."""
-        return "Not available on this amplifier."
 
     # The single keys. Each hook answers True when it took the key - whatever is then said is
     # the profile's job - and False when the amplifier has no such thing, which the key says.
@@ -2842,43 +2809,13 @@ class AmpObject(UIA):
     def script_maximum(self, gesture):
         self._adjustFocused(1, "max", gesture)
 
-    @script(description="Reports the focused control and its current value.",
-            gesture="kb:NVDA+shift+w", category=CATEGORY)
-    def script_whereAmI(self, gesture):
-        obj = api.getFocusObject()
-        name = getattr(obj, "name", "") or "unlabelled control"
-        value = getattr(obj, "value", "") or ""
-        ui.message("%s %s" % (name, value) if value else name)
-
-    @script(description="Reads out every knob in the current view with its value.",
-            gesture="kb:NVDA+shift+a", category=CATEGORY)
-    def script_announceAll(self, gesture):
-        amp = self.ampController
-        if amp is None:
-            return
-        parts = amp.profile.announceAllParts(amp)
-        if not parts:
-            ui.message("No readable values.")
-            return
-        ui.message(". ".join(parts))
-
-    @script(description="Reports which amplifier model is selected.",
-            gesture="kb:NVDA+shift+m", category=CATEGORY)
-    def script_reportAmp(self, gesture):
-        amp = self.ampController
-        model = amp.activeAmpModel() if amp is not None else None
-        if model:
-            ui.message("Amplifier %s" % model)
-            return
-        ui.message("Amplifier model unknown. Switch to the amp view first.")
-
     @staticmethod
     def _typingIntoText(gesture):
         """True when a plain key was pressed while a text box has focus.
 
         The number keys switch views, but the plugins' value readouts are real text boxes wired
         to their settings, and the tuner's reference pitch has one too - a digit typed there is
-        meant for the box. The NVDA+shift versions carry modifiers and always switch.
+        meant for the box.
         """
         if getattr(gesture, "modifiers", None):
             return False
@@ -2896,37 +2833,37 @@ class AmpObject(UIA):
             amp.profile.switchSection(amp, index)
 
     @script(description="Shows the first section view.",
-            gestures=["kb:NVDA+shift+1", "kb:1"], category=CATEGORY)
+            gesture="kb:1", category=CATEGORY)
     def script_section1(self, gesture):
         self._switchSection(0, gesture)
 
     @script(description="Shows the second section view.",
-            gestures=["kb:NVDA+shift+2", "kb:2"], category=CATEGORY)
+            gesture="kb:2", category=CATEGORY)
     def script_section2(self, gesture):
         self._switchSection(1, gesture)
 
     @script(description="Shows the third section view.",
-            gestures=["kb:NVDA+shift+3", "kb:3"], category=CATEGORY)
+            gesture="kb:3", category=CATEGORY)
     def script_section3(self, gesture):
         self._switchSection(2, gesture)
 
     @script(description="Shows the fourth section view.",
-            gestures=["kb:NVDA+shift+4", "kb:4"], category=CATEGORY)
+            gesture="kb:4", category=CATEGORY)
     def script_section4(self, gesture):
         self._switchSection(3, gesture)
 
     @script(description="Shows the fifth section view.",
-            gestures=["kb:NVDA+shift+5", "kb:5"], category=CATEGORY)
+            gesture="kb:5", category=CATEGORY)
     def script_section5(self, gesture):
         self._switchSection(4, gesture)
 
     @script(description="Shows the sixth section view.",
-            gestures=["kb:NVDA+shift+6", "kb:6"], category=CATEGORY)
+            gesture="kb:6", category=CATEGORY)
     def script_section6(self, gesture):
         self._switchSection(5, gesture)
 
     @script(description="Shows the seventh section view.",
-            gestures=["kb:NVDA+shift+7", "kb:7"], category=CATEGORY)
+            gesture="kb:7", category=CATEGORY)
     def script_section7(self, gesture):
         self._switchSection(6, gesture)
 
@@ -3102,13 +3039,6 @@ class AmpObject(UIA):
     def script_levelCheck(self, gesture):
         self._singleKey(gesture, "levelCheck")
 
-    @script(description="Opens the audio settings, in the standalone.",
-            gesture="kb:NVDA+shift+d", category=CATEGORY)
-    def script_audioSettings(self, gesture):
-        amp = self.ampController
-        if amp is not None:
-            amp.toggleAudioSettings()
-
     @script(description="Opens or closes the tuner.", gesture="kb:t", category=CATEGORY)
     def script_tuner(self, gesture):
         if self._typingIntoText(gesture):
@@ -3123,16 +3053,6 @@ class AmpObject(UIA):
             ui.message("tuner toggled")
         elif isinstance(result, str) and result:
             ui.message(result)
-
-    @script(description="The amp's quick toggle: the lead channel on the Mesa Boogie.",
-            gesture="kb:NVDA+shift+l", category=CATEGORY)
-    def script_leadChannel(self, gesture):
-        amp = self.ampController
-        if amp is None:
-            return
-        message = amp.profile.leadToggle(amp)
-        if message:
-            ui.message(message)
 
 
 class AmpChannelRow(AmpObject):

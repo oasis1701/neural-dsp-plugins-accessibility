@@ -21,10 +21,9 @@ DSP. Neural DSP and the other product names in this guide are trademarks of thei
 
 All of these work while a control inside an amplifier has focus. That scoping is deliberate: in a
 host, none of the amplifier's keys are claimed while you are anywhere else, so your DAW and any
-other accessibility add-ons keep every key they had. **NVDA+Shift+F**, **NVDA+Shift+G**,
-**NVDA+Shift+C** and **NVDA+Shift+I** are the exceptions and work from anywhere: the first
-three because that is the whole point of them, and the last so it still works while the
-microphone list is open.
+other accessibility add-ons keep every key they had. **NVDA+Shift+F** and **NVDA+Shift+I** are
+the exceptions and work from anywhere. NVDA+Shift+F has to, because it is how you step in, and
+NVDA+Shift+I does so that it still works while the microphone list is open.
 
 - **Tab** and **Shift+Tab** — move between controls
 - **Arrow keys** — adjust the focused knob; **Page Up/Down** larger steps; **Control+arrows**
@@ -34,12 +33,11 @@ microphone list is open.
   mouse click, so they all behave the same from the keyboard
 - **1** through **7** on the number row — show a section of the amplifier (the Petrucci X
   has seven, the Nolly X five, and the Mesa has five, which it calls views). A number past the
-  last section says "Section not available". **NVDA+Shift+1** through **7** do
-  the same. Focus then moves to that section's first control in Tab order, which says the
+  last section says "Section not available". Focus then moves to that section's first control in Tab order, which says the
   section's name along with its own, for example "Pre FX section, Chorus rate" on the
   Petrucci X and "Amp view, Bright pull switch, pushed" on the Mesa. While a text box has
-  focus, such as a knob's value box or the tuner's reference pitch, the plain number keys type
-  into the box; the NVDA+Shift versions always switch
+  focus, such as a knob's value box or the tuner's reference pitch, the number keys type
+  into the box. Leave the box first
 - **Shift+1** through **7** — say whether that section is switched on, on the Petrucci X and the
   Nolly X, for example "Pre FX section, on". Nothing is clicked and focus does not move. In a
   text box these keys type their character
@@ -84,21 +82,9 @@ microphone list is open.
 - **Left bracket** and **Right bracket** — previous and next module of the view you are in;
   see "Moving between modules" below for the Petrucci X, and the Nolly X's and the Mesa's own
   sections for theirs
-- **NVDA+Shift+A** — read out every knob in the current view with its value
-- **NVDA+Shift+W** — repeat the focused control and its value
-- **NVDA+Shift+M** — report which amplifier model is selected
-- **NVDA+Shift+L** — the quick toggle: the Lead channel pull switch on the Mesa, jumping
-  straight to the Lead amplifier on the Petrucci X and the Nolly X
-- **NVDA+Shift+D** — the audio settings, standalone only; press again to close them
 - **NVDA+Shift+F** — step keyboard focus into the amplifier, or back out to the host
 - **NVDA+Shift+I** — load your own impulse response file, on a microphone selector in the
   Cab view of the Petrucci X or the Nolly X (see the Cab view below)
-- **NVDA+Shift+C** — capture, for working on this add-on: saves a picture of the amplifier and
-  of any list or menu it has open, plus a list of every control with the name NVDA gives it,
-  in a folder called neuralAccess-captures inside your Temp folder. NVDA says "Capture 1 saved"
-  and counts up. Nothing is clicked or moved, so you can capture, change something, and
-  capture again without leaving the plug-in
-- **NVDA+Shift+G** — report where you are: which amplifier, which window, standalone or plug-in
 
 The single keys - A, C, T, L, comma, period, P, G, D, R and the brackets - have no NVDA+Shift version.
 **In a text box they type**, like any key: a knob's value box, the delay's tempo box and the
@@ -261,7 +247,7 @@ decibels, semitones, milliseconds, hertz - taken live from the plugin's own disp
 - **Four amplifier models**: Piezo, Clean, Rhythm and Lead, as four radio buttons at the bottom
   of the window that announce which is live. They are there in every view, and A steps through
   them from any view; the amp panel's knobs rename themselves to match - each model has its
-  own set. NVDA+Shift+M says which is live, in any view.
+  own set.
 - **Knobs say where their pointer points.** The amp panels, the pedals and the rack units print no
   numbers round their knobs, so a sighted player reads the pointer like the hand of a clock,
   and tutorials say "gain at 2 o'clock". Landing on such a knob you hear its value and then
@@ -330,7 +316,7 @@ decibels, semitones, milliseconds, hertz - taken live from the plugin's own disp
   button only then. Enter presses it once per tap. The stop after it, "Tap tempo light", is
   the delay's blinking tempo light and is there in every sync setting.
 - In the **standalone**, the utility bar adds TAP, a Tempo slider in beats per minute, the
-  metronome and its play button, and SETTINGS - which NVDA+Shift+D opens and closes. The audio
+  metronome and its play button, and SETTINGS, which Enter opens. The audio
   device, sample rate, buffer size and channel lists live there, along with the MIDI input
   device list. The stereo/mono Input mode switch exists only in the plug-in, where a stereo
   input is possible.
@@ -455,7 +441,7 @@ between the Input mode switch and MIDI, and inside the tuner window the Close, C
 buttons. The top bar's order is therefore: the five knobs, the Input mode switch, Tuner, MIDI.
 
 **Not in the Tab ring at all**, so the commands are the only keyboard route: the seven section
-buttons (1 to 7), the four amplifier selectors (A, or NVDA+Shift+L for Lead),
+buttons (1 to 7), the four amplifier selectors (A),
 the previous and next preset arrows (comma and period), and the two level meters (L starts
 and ends a level check).
 
@@ -642,8 +628,9 @@ those labels to names. Knob values are spoken in useful units, amp knobs on the 
   confirm, because this amplifier cannot even tell you which preset you would be deleting.
 - Two stops in the top bar announce as **decorative divider** - real buttons in the plugin's Tab
   order that do nothing at all. They are named so you know you have not missed anything.
-- The **audio settings** (standalone only): NVDA+Shift+D opens them, again closes them - Escape
-  does not. Focus lands on the device type, and Tab moves through the devices, the Test tone
+- The **audio settings** (standalone only). Tab to the audio settings button and press Enter to
+  open them. Enter on that button again closes them, and Escape does not. Whether Tab still
+  reaches the button while the settings are open has not been tried. Focus lands on the device type, and Tab moves through the devices, the Test tone
   button, the input and output channel lists, sample rate and buffer size. In the channel lists
   the arrows move between channels, Space or Enter toggles a channel and announces "ticked" or
   "not ticked" with its position, and Tab leaves the list. Channel names are read with Windows
