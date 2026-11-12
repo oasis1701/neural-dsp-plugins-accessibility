@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.13.0 (not released yet)
+## Unreleased
 
-The first public release.
+The first public release. It gets its version number, 0.13 and something, when it is published.
 
 - The add-on is now called Neural DSP Plugins Accessibility. Test builds up to 0.12.6 were called neuralAccess. NVDA treats the two as different add-ons, so remove neuralAccess before installing this one.
 - Its commands are listed under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog.
