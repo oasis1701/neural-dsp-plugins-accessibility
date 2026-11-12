@@ -2978,9 +2978,10 @@ class AmpObject(UIA):
     # Comma and period by the key itself, on any keyboard layout (Hadi, 2026-11-12: "make so
     # period and comma keys work for all keyboard layouts"). The bindings above go by the
     # character the layout types, so on a layout whose comma key types a letter (Russian б, for
-    # one) they never match. Windows gives these two keys the same virtual key codes on every
-    # layout, VK_OEM_COMMA and VK_OEM_PERIOD, so a plain press of either is taken by its code
-    # when no binding answered. NVDA asks the user's own Input Gestures settings before this, so
+    # one) they never match. Windows names keys by virtual key code as well, and keyboard
+    # layouts give these two keys VK_OEM_COMMA and VK_OEM_PERIOD whatever they type on them (how
+    # far that holds was not checked layout by layout), so a plain press of either is taken by
+    # its code when no binding answered. NVDA asks the user's own Input Gestures settings before this, so
     # a key assigned elsewhere there still goes where the user sent it.
     KEYS_BY_CODE = {0xBC: "presetPrevious", 0xBE: "presetNext"}
 
