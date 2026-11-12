@@ -8,7 +8,9 @@ This NVDA add-on makes Neural DSP guitar amplifier plug-ins usable with the NVDA
 
 The plug-ins report their controls to Windows but leave most of them without names, so a screen reader has little to say. The add-on names the controls, speaks knob values in their real units, reads switch positions off the screen, and lets you turn knobs with the arrow keys. It also adds keys for things a mouse user does at a glance. Those include switching sections, stepping through presets, running the tuner and checking input and output levels.
 
-This is an early release. It has been tested with NVDA 2026.3.1 and with the plug-ins inside REAPER. The standalone applications have had less testing.
+This is an early release. It has been tested with NVDA 2026.3.1 and with the plug-ins inside REAPER. The standalone applications use the same code as the plug-ins. The Mesa's and the Petrucci X's standalones were tried early on, before most of the recent work, and the Nolly X's has not been tried yet.
+
+Only the X versions of the two Archetypes are covered. The add-on does not recognise the original Archetype: Petrucci or Archetype: Nolly and leaves them alone.
 
 ## Installing
 

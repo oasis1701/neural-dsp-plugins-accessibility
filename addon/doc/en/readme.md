@@ -6,7 +6,7 @@ three amplifiers:
 
 - the **Mesa Boogie Mark IIC+ Suite**
 - the **Archetype Petrucci X**
-- the **Archetype Nolly X**, new in version 0.12.0
+- the **Archetype Nolly X**
 
 The same keys work in all three. Everything in "The commands" and "Getting keyboard focus in and
 out" applies to every amplifier; each amp then has a section of its own for what makes it
@@ -121,8 +121,7 @@ More than one instance is fine. Each amplifier window is tracked separately.
 The plugin has seven sections, each with a view of its own. Left to right they are **Wah Comp,
 Pre FX, Amp, Cab, EQ, Volume, Post FX** (1 to 7 on the number row). After a switch, focus lands on the view's first
 stop in the plugin's own Tab order, which says the section's name first, as in "Wah Comp
-section, Wah pedal", and Tab carries on through the view from there. Until version 0.11.13 the
-word was "view", as in "Wah Comp view". The plugin orders its
+section, Wah pedal", and Tab carries on through the view from there. The plugin orders its
 stops by height to the pixel before left to right, which is why Pre FX starts on the chorus
 pedal rather than the overdrive. Pressing the key of the view you are already in moves focus
 back to that first stop without clicking anything. Switching amplifiers with A while in the
@@ -150,10 +149,8 @@ decibels, semitones, milliseconds, hertz - taken live from the plugin's own disp
   focus back, and nothing is said on the way. Let go of Control after the number, because the
   double click waits for the key to come up. Press Control+number once and wait for the
   answer, because a second press made before the answer is left out. If the section cannot be
-  switched you hear "Could not switch the Wah Comp section". Version 0.11.14 took three
-  seconds to answer and said the section's button first, as in "Amp section, button". Version
-  0.11.15 leaves out the step that caused both. It answers in about 0.6 seconds from the
-  section's own view and just under a second from another view.
+  switched you hear "Could not switch the Wah Comp section". The answer comes in about 0.6
+  seconds from the section's own view and in just under a second from another view.
 - **The level meters.** The plugin has two meters, one beside the Input knob and one beside
   the Output knob. Each is a thin bar that rises with the signal, on a scale from minus 60
   decibels at the bottom to 0 at the top, with a red clip light above it that comes on when
@@ -201,11 +198,10 @@ decibels, semitones, milliseconds, hertz - taken live from the plugin's own disp
   Enter opens a folder, Left closes it, Enter on a preset loads it. When the menu closes,
   focus is put back on the preset display, which says the preset that is now loaded. Without
   that, Windows hands focus to the host's own window and you are outside the plugin.
-- **The mouse pointer and menus.** The plugin treats a pointer that happens to lie over a
-  menu as the mouse hovering there: the menu opened with that row already chosen and the
-  first arrow key opened its folder. The add-on clicks with the real pointer and used to put
-  it back where it rested afterwards. It no longer puts it back onto a menu its own click has
-  just opened; in that case the pointer stays on the control that was clicked.
+- **The mouse pointer and menus.** The add-on clicks with the real mouse pointer and puts the
+  pointer back where it was afterwards. When its click opens a menu, the pointer stays on the
+  control that was clicked. The plugin treats a pointer resting over a menu as a mouse
+  hovering there, and the menu would open with that row already chosen.
 - **Moving between modules.** The right bracket moves to the next module of the view you are
   in and the left bracket to the previous one, round and round. Focus lands on the module's
   first control in Tab order, which says the module's name first, for example "Delay, Delay
@@ -474,10 +470,10 @@ bar is the Petrucci X's: Input, the Gate switch and its threshold knob, Transpos
 mode switch (plug-in only), the preset controls, the Doubler switch and its spread knob, and
 Output, with a level meter at each end.
 
-Support for this plugin is new in 0.12.0. It was built from the plugin's own layout and
-pictures and from one run through every section on every amplifier, and it has passed an
-offline check of 569 points, but nobody had used it by ear when this was written. See "What
-has not been tried yet" at the end of this section.
+This is the newest of the three. It was built from the plugin's own layout and pictures and
+from a run through every section on every amplifier. Since then the Pre Effects, EQ and Post
+Effects sections have been used by ear in REAPER. The Amp and Cab sections and the standalone
+application have not. See "What has not been tried yet" at the end of this section.
 
 Everything the Petrucci X's section says under these headings works the same way here: the
 level meters and the L key, switching a whole section off or on with Shift and Control and a
@@ -547,13 +543,14 @@ control's own menu, and typing an exact value.
   to the first band, and from EQ power straight to the top bar.
 - **What has not been tried yet.** Every switch reading was worked out from the plugin's own
   two pictures of that switch, and matched the real screen in the one position the switch
-  happened to be in. The other position has not been seen on screen for any of them. The
+  happened to be in. EQ voicing and EQ power have since been heard in both positions. For the
+  other switches the second position has not been seen on screen. The
   readings most likely to say nothing at another window size are the four small toggles on
   the pedals (Compressor attack, Overdrive 1 bright, Delay 1 sync and Delay 2 ping pong). If a
   switch says the wrong word or no word, NVDA's log has the figures it read. Also not yet seen
   on this plugin are the tuner, the MIDI mappings window, the list of presets, a microphone
-  list, either delay with its sync off, the Tap tempo button, and the standalone application.
-  All of those run on the same code as the Petrucci X's.
+  list, either delay with its sync off, the Tap tempo button, the Amp and Cab sections by ear,
+  and the standalone application. All of those run on the same code as the Petrucci X's.
 
 ## The Mesa Boogie Mark IIC+ Suite
 
@@ -580,11 +577,6 @@ those labels to names. Knob values are spoken in useful units, amp knobs on the 
   you hear. **To switch a section on or off, Tab to its view button and press Enter.** That
   is the plugin's own key for it, and the add-on then says "EQ section, on" or "EQ section,
   off". The view buttons are in the Tab order after the top bar's value boxes.
-- **Before version 0.11.1 the view keys switched sections off by mistake.** They sent Enter to
-  the view button, which never showed the view and switched its section instead, off on one
-  press and on again on the next. If the Mesa has sounded wrong since you started using this
-  add-on, with no cabinet, no effects or no EQ, this is the likely reason. Go round the five
-  view buttons once with Tab and switch on any that say "section off".
 - **Moving between modules.** The right bracket moves to the next module of the view you are
   in and the left bracket to the previous one, round and round. Focus lands on the module's
   first named control, and the module's name is said first unless the control's own name
