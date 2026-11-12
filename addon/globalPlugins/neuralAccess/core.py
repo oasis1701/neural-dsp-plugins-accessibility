@@ -447,9 +447,10 @@ _HELD_KEYS = (0x10, 0x11, 0x12, 0x5B, 0x5C, 0x2D, 0x14)
 def modifiersDown():
     """True while a modifier key is physically held down.
 
-    A command on a chord such as NVDA+shift+I runs while its keys are still down, and a key it
-    sends then reaches the plug-in with shift attached. JUCE answers a plain Enter and ignores
-    shift+Enter, which is how NVDA+shift+I failed to open the microphone list (2026-11-09)."""
+    A command on a chord such as NVDA+shift+E runs while its keys are still down, and a key it
+    sends then reaches the plug-in with them attached. JUCE answers a plain Enter and ignores
+    shift+Enter, which is how NVDA+shift+I, the same command until 0.13.0, failed to open the
+    microphone list (2026-11-09)."""
     try:
         return any(_user32.GetAsyncKeyState(key) & 0x8000 for key in _HELD_KEYS)
     except Exception:
@@ -929,7 +930,7 @@ class AmpProfile(object):
         return False
 
     def loadImpulseResponse(self, controller, focus, processID):
-        """The NVDA+shift+I command: start loading a custom impulse response file. Returns a
+        """The NVDA+shift+E command: start loading a custom impulse response file. Returns a
         message to speak, or None when the profile has started something that speaks for
         itself."""
         return "Loading impulse responses is not available on this amplifier."
@@ -3031,6 +3032,24 @@ class AmpObject(UIA):
             gesture="kb:control+m", category=CATEGORY)
     def script_midiMappings(self, gesture):
         self._singleKey(gesture, "midiMappings")
+
+    # Until 0.13.0 this was NVDA+Shift+I on the global plugin, so that it also worked with the
+    # microphone list already open. A global key beats NVDA's own commands in every program, and
+    # NVDA+Shift+I is the magnifier's colour filter in NVDA 2026. Hadi chose NVDA+Shift+E
+    # (2026-11-12; I sits too far into the middle of the keyboard, and NVDA+Alt opens REAPER's
+    # menu). Here, on the amplifier's controls, it takes nothing from any other program, and
+    # NVDA itself does not use it.
+    @script(description="Loads your own impulse response file into the focused microphone slot: "
+                        "opens the microphone list and presses its LOAD button.",
+            gesture="kb:NVDA+shift+e", category=CATEGORY)
+    def script_loadImpulseResponse(self, gesture):
+        amp = self.ampController
+        if amp is None:
+            return
+        message = amp.profile.loadImpulseResponse(amp, api.getFocusObject(),
+                                                  getattr(self, "processID", 0))
+        if message:
+            ui.message(message)
 
     # Start and stop on one key (Hadi, 2026-11-11, asked which of the two it should be).
     @script(description="Starts a level check. Pressed again, ends it and says the highest and "

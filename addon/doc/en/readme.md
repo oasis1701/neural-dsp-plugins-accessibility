@@ -21,9 +21,9 @@ DSP. Neural DSP and the other product names in this guide are trademarks of thei
 
 All of these work while a control inside an amplifier has focus. That scoping is deliberate: in a
 host, none of the amplifier's keys are claimed while you are anywhere else, so your DAW and any
-other accessibility add-ons keep every key they had. **NVDA+Shift+F** and **NVDA+Shift+I** are
-the exceptions and work from anywhere. NVDA+Shift+F has to, because it is how you step in, and
-NVDA+Shift+I does so that it still works while the microphone list is open.
+other accessibility add-ons keep every key they had. **NVDA+Shift+A** is the one exception and
+works from anywhere, because it is how you step in. With NVDA's laptop keyboard layout the same
+command is **NVDA+Shift+G**, because the laptop layout uses NVDA+Shift+A for say all with review.
 
 - **Tab** and **Shift+Tab** — move between controls
 - **Arrow keys** — adjust the focused knob; **Page Up/Down** larger steps; **Control+arrows**
@@ -82,11 +82,12 @@ NVDA+Shift+I does so that it still works while the microphone list is open.
 - **Left bracket** and **Right bracket** — previous and next module of the view you are in;
   see "Moving between modules" below for the Petrucci X, and the Nolly X's and the Mesa's own
   sections for theirs
-- **NVDA+Shift+F** — step keyboard focus into the amplifier, or back out to the host
-- **NVDA+Shift+I** — load your own impulse response file, on a microphone selector in the
+- **NVDA+Shift+A** — step keyboard focus into the amplifier, or back out to the host. With NVDA's
+  laptop keyboard layout it is **NVDA+Shift+G**
+- **NVDA+Shift+E** — load your own impulse response file, on a microphone selector in the
   Cab view of the Petrucci X or the Nolly X (see the Cab view below)
 
-The single keys - A, C, T, L, comma, period, P, G, D, R and the brackets - have no NVDA+Shift version.
+The single keys - A, C, T, L, M, comma, period, P, G, D, R and the brackets - need no NVDA key.
 **In a text box they type**, like any key: a knob's value box, the delay's tempo box and the
 tuner's reference pitch are text boxes. Leave the box, then press the key. The
 brackets, comma and period work with the Persian keyboard layout active as well as the English
@@ -103,10 +104,10 @@ and its own Tab handling has nothing to move on from until something inside is f
 
 In a **standalone**, the add-on puts focus on a real control whenever the window comes forward -
 the first time you arrive it lands on the first view button, after that it returns to the control
-you were last using. If focus is ever stranded, Tab steps in, and **NVDA+Shift+F** does the same
+you were last using. If focus is ever stranded, Tab steps in, and **NVDA+Shift+A** does the same
 on demand.
 
-In a **plug-in window**, press **NVDA+Shift+F** to step in, and **press it again to step back
+In a **plug-in window**, press **NVDA+Shift+A** to step in, and **press it again to step back
 out** to the host control you came from. This matters: the amplifier's Tab ring is cyclic and has
 no way out of its own, so without the deliberate way back you would be stuck inside it. The
 add-on never grabs focus by itself in a host - your DAW's own controls are somewhere you
@@ -297,11 +298,13 @@ decibels, semitones, milliseconds, hertz - taken live from the plugin's own disp
   MID and FAR distances, and phase (normal or inverted). A miniature copy of the amp knob row
   also lives in this view and is named like the real one, and its switches say their setting
   too: amp on or off, and Soar, Bright, Bite or Mid boost on or off.
-- **Your own impulse responses**: on either microphone selector, press **NVDA+Shift+I** and
+- **Your own impulse responses**: on either microphone selector, press **NVDA+Shift+E** and
   let go of the keys. The add-on opens the microphone list and presses its LOAD button, which
   the plugin offers only to the mouse. A standard Windows file dialog titled "Select IR" opens,
   and you pick the file there as in any other program. Enter on the selector opens the list
-  yourself; the arrow keys there walk the six built-in microphones only.
+  yourself; the arrow keys there walk the six built-in microphones only. NVDA+Shift+E works on the
+  selector and not inside the open list, so close the list first. On any other control it says
+  "Go to the left or right microphone selector in the Cab view first."
 - The **EQ view** is a four band semi-parametric equaliser per amplifier: frequency and gain
   knobs per band with gains in decibels, plus high-pass and low-pass filters in hertz.
 - The **Post FX view** holds the chorus, delay and reverb rack units, including the delay's sync
@@ -528,7 +531,7 @@ control's own menu, and typing an exact value.
   previous and next microphone buttons, the microphone list, a microphone switch that says
   "on" or "off", position, distance, mic level and pan knobs, a room send switch with its
   level knob, and a phase button that says "normal" or "inverted". In the middle is a small
-  copy of the amplifier's own knobs. **NVDA+Shift+I** on a microphone list loads your own
+  copy of the amplifier's own knobs. **NVDA+Shift+E** on a microphone selector loads your own
   impulse response file, as on the Petrucci X.
 - **Moving between modules.** The brackets step through the top bar and then the modules of
   the section you are in. In Pre Effects those are Compressor, Overdrive 1, Delay 1 and

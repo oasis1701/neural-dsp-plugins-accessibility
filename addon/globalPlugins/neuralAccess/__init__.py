@@ -317,10 +317,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             return None
         return engine.findAmpWindow(root)
 
+    # NVDA+Shift+A (Hadi, 2026-11-12). Until 0.13.0 this was NVDA+Shift+F, which is NVDA's own
+    # "report text formatting" and, bound on a global plugin, was lost in every program. NVDA+Alt
+    # was ruled out because a lone Alt opens REAPER's menu. NVDA+Shift+A is free on NVDA's
+    # desktop layout; the laptop layout uses it for "say all with review", so there it is
+    # NVDA+Shift+G, which is free on both.
     @script(description="Steps keyboard focus into the amplifier, or back out to the host. "
                         "Inside a host the amplifier's own Tab ring is cyclic and never leaves it, "
                         "so this is the way back.",
-            gesture="kb:NVDA+shift+f", category=engine.CATEGORY)
+            gestures=["kb(desktop):NVDA+shift+a", "kb(laptop):NVDA+shift+g"],
+            category=engine.CATEGORY)
     def script_focusPlugin(self, gesture):
         focus = api.getFocusObject()
         controller = self._controllerFor(focus)
@@ -379,25 +385,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if host and engine.focusFirstHostControl(host, controller.hwnd) and self._focusLeft(controller):
             return
         ui.message("Could not step back out to the host. Alt tab away and back instead.")
-
-    @script(description="Loads your own impulse response file into the focused microphone slot: "
-                        "opens the microphone list and presses its LOAD button.",
-            gesture="kb:NVDA+shift+i", category=engine.CATEGORY)
-    def script_loadImpulseResponse(self, gesture):
-        processID = self._foregroundProcessID()
-        focus = api.getFocusObject()
-        controller = self._controllerFor(focus)
-        if controller is None:
-            # The microphone list may already be open; it is a window of its own.
-            hwnd = self._foregroundAmpWindow() or (popups.findEditorInProcess(processID) if processID else None)
-            if hwnd:
-                controller = engine.ampForWindow(hwnd, processID)
-        if controller is None:
-            ui.message("No Neural DSP amplifier found.")
-            return
-        message = controller.profile.loadImpulseResponse(controller, focus, processID)
-        if message:
-            ui.message(message)
 
     # Saves a picture and a list of every control of the amplifier as it is now, including any
     # list or menu it has open, for working on this add-on. Bound to NVDA+Shift+C only with the
