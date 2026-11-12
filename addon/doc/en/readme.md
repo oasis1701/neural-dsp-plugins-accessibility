@@ -14,7 +14,7 @@ Tab goes round in a circle inside the plug-in and never leaves it. There are two
 
 ## The signal chain
 
-Your guitar goes through the plug-in's sections from left to right, and the number keys follow the same order. Any section can be switched off whole, and the sound then skips it. The top bar is not a section. It is there in every view and holds Input, the noise gate, Transpose, the presets, the doubler and Output.
+Your guitar goes through the plug-in's sections from left to right, and the number keys follow the same order. Any section can be switched off whole, and the sound then skips it.
 
 The Petrucci X has seven sections.
 
@@ -35,6 +35,10 @@ The Nolly X has five sections.
 - **5, Post Effects.** Delay 2 and reverb pedals.
 
 On the Nolly X the amplifier and the cabinet are linked, so choosing an amplifier brings its own cabinet. Unlink them with Control+A to pair any amplifier with any cabinet.
+
+## The top bar
+
+The top bar runs along the top of the window and stays the same whichever section you are in. It holds Input, the noise gate, Transpose, the presets, the doubler and Output. G and D switch the gate and the doubler from anywhere, R goes to Transpose, and the brackets reach the top bar from any section.
 
 ## Keys
 
