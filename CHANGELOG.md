@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.1 (2026-11-12)
+
+The user guide is clearer. The add-on itself is the same as in 0.13.0.
+
+- Escape is described as the other way out of the plug-in. It closes REAPER's FX window.
+- The top and bottom bars have their own section, listing what each holds, the tuner included.
+- The right-click menu on M or the Applications key is described, with Reset parameter, MIDI Learn and Show MIDI Map.
+- How RESET and DELETE ask before they act is under Good to know.
+
 ## 0.13.0 (2026-11-12)
 
 The first public release.
