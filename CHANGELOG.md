@@ -10,4 +10,5 @@ The first public release. It gets its version number, 0.13 and something, when i
 - Loading your own impulse response is now NVDA+Shift+E, pressed on a microphone selector. It was NVDA+Shift+I, which is one of NVDA's own commands.
 - The add-on no longer has keys for reading out every knob, repeating the focused control, saying the amplifier model, the quick Lead toggle, the standalone's audio settings or the diagnostics report. The number keys 1 to 7 no longer have NVDA+Shift versions, and the plain ones stay.
 - The add-on no longer saves pictures of the plug-in, either by itself when it lands on a control with no name or with NVDA+Shift+C. Both were for developing the add-on.
+- The arrow keys do nothing on a button or switch inside the plug-in. In REAPER's FX window, Down Arrow on a button used to move focus out of the plug-in to REAPER's Add button.
 - Comma and Period (previous and next preset) and the brackets (previous and next module) work with any keyboard layout. The brackets are the two keys to the right of P, whatever the layout types on them.

@@ -2640,12 +2640,23 @@ class AmpObject(UIA):
 
     # ---------- scripts ----------
 
+    # Controls that do nothing with an arrow key, by the role the plug-in itself gives them. Sent
+    # on, the key went through the plug-in to the host's window, and in REAPER's FX window the
+    # dialog's own arrow handling then moved focus out of the plug-in: Down Arrow on any button
+    # landed on REAPER's Add button (Hadi, 2026-11-12, who chose to stop it). On these the
+    # arrows, Page Up and Down, Home and End now do nothing. Knobs, combo boxes, text boxes,
+    # lists and the audio channel rows keep theirs.
+    NO_ARROW_ROLES = (controlTypes.Role.BUTTON, controlTypes.Role.TOGGLEBUTTON,
+                      controlTypes.Role.STATICTEXT)
+
     def _adjustFocused(self, direction, size, gesture):
         amp = self.ampController
         obj = api.getFocusObject()
         if amp is not None and amp.moveChannelRow(obj, gesture, size):
             return
         if amp is None or not isinstance(obj, AmpSlider):
+            if amp is not None and getattr(obj, "ampNativeRole", None) in self.NO_ARROW_ROLES:
+                return
             gesture.send()
             return
         rangeInfo = obj.ampRange
