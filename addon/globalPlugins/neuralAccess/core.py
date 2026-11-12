@@ -3024,9 +3024,10 @@ class AmpObject(UIA):
             if not getattr(amp.profile, hook)(amp, *args):
                 ui.message("Not available on this amplifier.")
 
+    # On the Mesa, which has a gate knob and no switch, G moves to that knob. The description
+    # leaves the Mesa out, because its support is unfinished and not offered (Hadi, 2026-11-12).
     @script(description="Switches the noise gate on or off and says its new state. Focus stays "
-                        "where it is. On the Mesa Boogie, which has a gate knob and no switch, "
-                        "moves to that knob.",
+                        "where it is.",
             gesture="kb:g", category=CATEGORY)
     def script_gate(self, gesture):
         self._singleKey(gesture, "quickToggle", "gate")
