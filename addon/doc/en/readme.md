@@ -36,9 +36,26 @@ The Nolly X has five sections.
 
 On the Nolly X the amplifier and the cabinet are linked, so choosing an amplifier brings its own cabinet. Unlink them with Control+A to pair any amplifier with any cabinet.
 
-## The top bar
+## The top and bottom bars
 
-The top bar runs along the top of the window and stays the same whichever section you are in. It holds Input, the noise gate, Transpose, the presets, the doubler and Output. G and D switch the gate and the doubler from anywhere, R goes to Transpose, and the brackets reach the top bar from any section.
+Two bars stay the same whichever section you are in.
+
+The top bar holds these controls.
+
+- Input, with its level meter
+- The noise gate switch and its threshold
+- Transpose
+- Input mode, mono or stereo, in the VST3 plug-in only
+- The presets, with the preset display, previous and next preset, SAVE AS, and SAVE and DELETE for your own presets
+- More preset actions, with IMPORT, RESET and LOCATE FILE
+- The doubler switch and its spread
+- Output, with its level meter
+
+The bottom bar holds these controls.
+
+- The amplifier selectors. On the Nolly X there are cabinet selectors and an amp and cab link as well.
+- Tuner, which opens the tuner
+- MIDI, which opens the MIDI mappings window
 
 ## Keys
 
