@@ -2984,11 +2984,19 @@ class AmpObject(UIA):
     # its code when no binding answered. NVDA asks the user's own Input Gestures settings before this, so
     # a key assigned elsewhere there still goes where the user sent it.
     KEYS_BY_CODE = {0xBC: "presetPrevious", 0xBE: "presetNext"}
+    # The brackets by where they sit, the two keys to the right of P (scan codes 0x1A and 0x1B),
+    # asked for the same day. Their virtual key codes do not stay with them: the German layout
+    # gives VK_OEM_4 and VK_OEM_6 to ß and the accent key on the top row, and puts Ü and + to the
+    # right of P. The place is what an English-keyboard habit, and the Persian bindings above,
+    # go by.
+    KEYS_BY_POSITION = {0x1A: "modulePrevious", 0x1B: "moduleNext"}
 
     def getScript(self, gesture):
         found = super(AmpObject, self).getScript(gesture)
         if found is None and not getattr(gesture, "modifiers", None):
             name = self.KEYS_BY_CODE.get(getattr(gesture, "vkCode", None))
+            if name is None and not getattr(gesture, "isExtended", False):
+                name = self.KEYS_BY_POSITION.get(getattr(gesture, "scanCode", None))
             if name:
                 found = getattr(self, "script_" + name, None)
         return found
