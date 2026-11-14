@@ -52,7 +52,9 @@ $($body.ToString())
 }
 
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
-$addon = Join-Path $OutDir ("{0}-{1}.nvda-addon" -f $name, $version)
+# The file name carries no version. Every release attaches a file of the same name, so
+# GitHub's releases/latest/download/<file name> link always serves the newest release.
+$addon = Join-Path $OutDir ("{0}.nvda-addon" -f $name)
 if (Test-Path $addon) { Remove-Item $addon -Force }
 
 # Exclude __pycache__ so stale bytecode never ships.
