@@ -2004,7 +2004,8 @@ class ArchetypeXProfile(engine.AmpProfile):
         """Splices the controls the plugin leaves out of its own Tab ring back into it.
 
         Three patches, each anchored on a pair of stops measured to be neighbours in the native
-        ring: More preset actions, TUNER, and the tuner window's close and mode buttons. In
+        ring: the preset arrows with More preset actions, TUNER, and the tuner window's close
+        and mode buttons. In
         front of them, the delete question keeps Tab between its own two buttons while it is up,
         and the view's own controls take this add-on's order, each module's switch first (see
         RING_TYPES), before a plug-in's own patches for its views (viewTabPatch).
@@ -2013,7 +2014,7 @@ class ArchetypeXProfile(engine.AmpProfile):
             return True
         if self._midiWindowPatch(obj, controller, backwards):
             return True
-        if self._moreActionsPatch(obj, controller, backwards):
+        if self._presetRowPatch(obj, controller, backwards):
             return True
         if self._topBarRunPatch(obj, controller, backwards):
             return True
@@ -2360,32 +2361,64 @@ class ArchetypeXProfile(engine.AmpProfile):
             return None
         return [(parts[name][2], parts[name][3], parts[name][0]) for name in names]
 
-    def _moreActionsPatch(self, obj, controller, backwards):
-        """Splices the More preset actions button into the Tab ring.
+    def _presetRowPatch(self, obj, controller, backwards):
+        """Splices the preset arrows and the More preset actions button into the Tab ring.
 
-        The plugin gives it no Tab stop of its own, so it is inserted between the preset
-        display and the DOUBLER caption - deliberately not next to SAVE AS, where the SAVE and
-        DELETE buttons materialise for user presets and a patch would skip them.
+        The plugin gives none of the three a Tab stop of its own. They go between the preset
+        display and the DOUBLER caption, neighbours in the plug-in's ring: the preset display,
+        Previous preset, Next preset, More preset actions, DOUBLER. Deliberately not next to
+        SAVE AS, where the SAVE and DELETE buttons materialise for user presets and a patch
+        would skip them.
+
+        The arrows came in with 0.13.5. Hadi, 2026-11-15: "we do not have the preset prev and
+        preset next buttons included in the tab order, meaning that users can't midi learn these
+        two important buttons". The M key opens the menu of the control that has focus, and the
+        plug-in wraps both arrows in its MIDI learn control. Without them (fewer than two found)
+        the run is the one before: the preset display, More preset actions, DOUBLER.
         """
-        more = self.moreActionsElement(controller)
-        if more is None:
-            return False
-        moreRect, moreElement = more
         display = self.presetDisplayElement(controller)
         displayRect = _prop(display, PROP_BOUNDING_RECT) if display is not None else None
         doubler = self._doublerCaption(controller)
-        if self._sameControl(obj, moreRect):
-            if backwards:
-                if display is not None:
-                    return controller.trySetFocus(display)
-            elif doubler is not None:
-                return controller.trySetFocus(doubler[1])
+        # (rectangle, element, whole rectangle must match) for each stop of the run, the two ends
+        # None when not found. An arrow's corner is also the corner of the preset block's
+        # containers, so an arrow is matched on its whole rectangle.
+        run = [(tuple(displayRect[:4]), display, False) if displayRect and len(displayRect) >= 4 else None]
+        arrows = controller._positionalSweep("presetArrows", lambda: self._presetArrows(controller))
+        if len(arrows) >= 2:
+            run += [(tuple(arrows[0][1][:4]), arrows[0][2], True), (tuple(arrows[1][1][:4]), arrows[1][2], True)]
+        more = self.moreActionsElement(controller)
+        if more is not None:
+            run.append((tuple(more[0][:4]), more[1], False))
+        run.append((doubler[0], doubler[1], False) if doubler is not None else None)
+        if len(run) <= 2:
             return False
-        if not backwards and displayRect and self._sameControl(obj, tuple(displayRect[:4])):
-            return controller.trySetFocus(moreElement)
-        if backwards and doubler is not None and self._sameControl(obj, doubler[0]):
-            return controller.trySetFocus(moreElement)
+        for index, stop in enumerate(run):
+            if stop is None:
+                continue
+            rect, _element, whole = stop
+            if not (self._isLandingTarget(obj, rect, CT_BUTTON) if whole else self._sameControl(obj, rect)):
+                continue
+            # From the display only Tab is taken, and from DOUBLER only Shift+Tab: the other way
+            # out of each is the plug-in's own.
+            if (index == 0 and backwards) or (index == len(run) - 1 and not backwards):
+                return False
+            target = run[index - 1 if backwards else index + 1]
+            if target is None:
+                return False
+            log.info("neuralAccess: preset row: %s from stop %d of %d to %r" % (
+                "Shift+Tab" if backwards else "Tab", index + 1, len(run), target[0]))
+            return controller.trySetFocus(target[1])
         return False
+
+    def _presetArrowDirection(self, obj, controller):
+        """-1 when obj is the Previous preset arrow, 1 for Next preset, else None."""
+        arrows = controller._positionalSweep("presetArrows", lambda: self._presetArrows(controller))
+        if len(arrows) < 2:
+            return None
+        for direction, entry in ((-1, arrows[0]), (1, arrows[1])):
+            if self._isLandingTarget(obj, tuple(entry[1][:4]), CT_BUTTON):
+                return direction
+        return None
 
     def presetDisplayElement(self, controller):
         geometry = controller.clientGeometry()
@@ -4562,8 +4595,9 @@ class ArchetypeXProfile(engine.AmpProfile):
 
     def enterPatch(self, obj, controller):
         """Enter on Cancel with "Yes, delete" chosen clicks "Yes, delete"; Enter on a knob goes
-        into its value box (see _valueBoxEnter). Everything else is left alone, Enter on Cancel
-        with Cancel chosen included: that is an ordinary click."""
+        into its value box (see _valueBoxEnter); Enter on a preset arrow is the comma or period
+        key. Everything else is left alone, Enter on Cancel with Cancel chosen included: that
+        is an ordinary click."""
         if self.deleteChoice(controller) != "yes":
             # Enter opens a list of the MIDI mappings window by itself. It is only watched, so
             # that focus can be brought back when the list's menu has closed.
@@ -4572,6 +4606,12 @@ class ArchetypeXProfile(engine.AmpProfile):
                 if child is not None:
                     self._followMidiMenu(controller, child[3], "a mapping's list")
                     return False
+            # As a bare click, as on every other button, the preset would change and nothing
+            # would say which one is loaded now.
+            if getattr(obj, "ampNativeRole", None) == controlTypes.Role.BUTTON:
+                direction = self._presetArrowDirection(obj, controller)
+                if direction is not None and self.presetStep(controller, direction):
+                    return True
             return self._valueBoxEnter(obj, controller)
         state, dialog = self._deleteQuestionUp(controller)
         if state is None:

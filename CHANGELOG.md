@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.5 (2026-11-15)
+
+Previous preset and Next preset are now in the Tab order, so M or the Applications key can open their right-click menu and assign them to a MIDI control. The plug-ins give neither arrow a Tab stop of its own.
+
+- Tab from the preset display goes to Previous preset, then Next preset, then More preset actions. Shift+Tab goes back the same way.
+- Enter on an arrow loads the previous or next preset and says its name, as Comma and Period do.
+
 ## 0.13.4 (2026-11-15)
 
 The on/off switch of each pedal, effects unit, microphone, amplifier and EQ now comes first when you Tab through it. The plug-ins put most of these switches after the knobs.
