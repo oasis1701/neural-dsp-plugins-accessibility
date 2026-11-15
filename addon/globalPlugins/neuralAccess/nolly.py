@@ -243,6 +243,11 @@ FREQUENCY_CAPTION = re.compile(r"^(\d+(?:\.\d+)?)\s*(k?)Hz$")
 # focus: after a jump to it the next Tab went on from EQ power, to the lamp and the captions
 # (Hadi's log, 2026-11-11, 18:12:32). So Tab from EQ power goes to GATE, and Shift+Tab from GATE
 # or from the background goes to EQ power.
+#
+# Since 0.13.2 the switch-first order (RING_TYPES in archetypex.py) is asked first and takes the
+# EQ's two ends: EQ power is its first stop, after the resize button and before EQ voicing, and
+# Low pass filter its last, before GATE. What is left to these jumps is the two runs inside,
+# and the ends above only while that order cannot be had.
 EQ_BOX_ROW_Y = 0.4463
 EQ_CAPTION_ROW_Y = 0.6624
 EQ_ROW_TOLERANCE = 0.03
@@ -256,18 +261,35 @@ EQ_AFTER_CAPTION = "GATE"
 # which goes up 230 ms after the key, and the plug-in's redraw.
 VOICING_REDRAW_MS = 600
 
-# The modules the bracket keys step through, left to right: (name, axis, low, high). The pedals
-# stand at 10 to 268, 261 to 519, 514 to 772 and 765 to 1023 pixels of 1024 in Pre Effects, and
-# at 137 to 603 and 611 to 869 in Post Effects.
+# The modules the bracket keys step through, left to right but for the Cab section: (name, axis,
+# low, high). The pedals stand at 10 to 268, 261 to 519, 514 to 772 and 765 to 1023 pixels of
+# 1024 in Pre Effects, and at 137 to 603 and 611 to 869 in Post Effects.
 VIEW_MODULES = {
     "prefx": (("Compressor", "x", 0.0, 0.258), ("Overdrive 1", "x", 0.258, 0.504),
               ("Delay 1", "x", 0.504, 0.750), ("Overdrive 2", "x", 0.750, 1.0)),
     "amp": (("Amplifier", "x", 0.0, 1.0),),
-    "cab": (("Left microphone", "x", 0.0, 0.25), ("Amplifier", "x", 0.25, 0.75),
-            ("Right microphone", "x", 0.75, 1.0)),
+    # The Cab view goes left microphone, right microphone, then the miniature amp in the
+    # middle (Hadi, 2026-11-15: "left microphone, right, then the amp ... and same order in
+    # the brackets"), and Tab follows (TAB_IN_MODULE_ORDER).
+    "cab": (("Left microphone", "x", 0.0, 0.25), ("Right microphone", "x", 0.75, 1.0),
+            ("Amplifier", "x", 0.25, 0.75)),
     "eq": (("EQ", "x", 0.0, 1.0),),
     "postfx": (("Delay 2", "x", 0.0, 0.593), ("Reverb", "x", 0.593, 1.0)),
 }
+
+# Each module's on/off switch, first in its Tab order (see RING_TYPES in archetypex.py): the
+# stomps, each microphone's on/off, the EQ's power and the amp's power switch. The plug-in's
+# order already goes through the pedals left to right.
+MODULE_SWITCHES = frozenset((
+    "Compressor pedal", "Overdrive 1 pedal", "Delay 1 pedal", "Overdrive 2 pedal",
+    "Amp power switch",
+    "Left microphone switch", "Right microphone switch",
+    "EQ power",
+    "Delay 2 pedal", "Reverb pedal",
+))
+# In the Cab section the plug-in starts with the miniature amp, and Tab goes left microphone,
+# right microphone, amp, as the bracket keys do (Hadi, 2026-11-15).
+TAB_IN_MODULE_ORDER = frozenset(("cab",))
 
 # Per amplifier: the knobs left to right as printed on each panel (pictures of 2026-11-11), and
 # the small switches. The amp's own OUTPUT knob is "Amp output", so that it cannot be mistaken
@@ -493,6 +515,8 @@ class NollyProfile(ArchetypeXProfile):
     VIEW_SLIDER_LANDMARKS = VIEW_SLIDER_LANDMARKS
     VIEW_BUTTON_LANDMARKS = VIEW_BUTTON_LANDMARKS
     VIEW_MODULES = VIEW_MODULES
+    MODULE_SWITCHES = MODULE_SWITCHES
+    TAB_IN_MODULE_ORDER = TAB_IN_MODULE_ORDER
     VIEW_POINTER_KNOBS = VIEW_POINTER_KNOBS
     NOTE_KNOB_NAMES = NOTE_KNOB_NAMES
     DELAY_DISPLAYS = DELAY_DISPLAYS
@@ -759,10 +783,10 @@ class NollyProfile(ArchetypeXProfile):
                 return True
         return super(NollyProfile, self).passedOver(obj)
 
-    def tabPatch(self, obj, controller, backwards):
-        if self._eqJump(obj, controller, backwards):
-            return True
-        return super(NollyProfile, self).tabPatch(obj, controller, backwards)
+    def viewTabPatch(self, obj, controller, backwards):
+        """The EQ's jumps, asked after the switch-first order, which takes the EQ's two ends
+        (EQ power first, Low pass filter last) and leaves the runs inside to these."""
+        return self._eqJump(obj, controller, backwards)
 
     def _eqJump(self, obj, controller, backwards):
         """Tab and Shift+Tab over the EQ's two runs of passed-over stops in one move each (see

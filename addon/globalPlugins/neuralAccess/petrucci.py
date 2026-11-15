@@ -248,7 +248,7 @@ VIEW_KEYS = ("wahcomp", "prefx", "amp", "cab", "eq", "volume", "postfx")
 
 # The previous and next module keys (the brackets; Hadi, 2026-11-10). Each view's modules in the
 # order the keys step through them, which is how they stand on screen - left to right, or top to
-# bottom for the Post FX racks: (name, axis, low, high). A control belongs to the module whose
+# bottom for the Post FX racks, the Cab view apart: (name, axis, low, high). A control belongs to the module whose
 # span holds its centre along that axis, as a client fraction. The boundaries are the middles of
 # the gaps between neighbouring modules in probe-results\petrucci-views.txt (2026-08-11); in the
 # Pre FX view the pedals' controls end and start at 262 and 358, 441 and 538, 720 and 770 pixels
@@ -260,12 +260,33 @@ VIEW_MODULES = {
     "prefx": (("Overdrive", "x", 0.0, 0.303), ("Phaser", "x", 0.303, 0.478),
               ("Chorus", "x", 0.478, 0.728), ("Flanger", "x", 0.728, 1.0)),
     "amp": (("Amplifier", "x", 0.0, 1.0),),
-    "cab": (("Left microphone", "x", 0.0, 0.25), ("Amplifier", "x", 0.25, 0.75),
-            ("Right microphone", "x", 0.75, 1.0)),
+    # The Cab view goes left microphone, right microphone, then the miniature amp in the
+    # middle (Hadi, 2026-11-15: "left microphone, right, then the amp ... and same order in
+    # the brackets"), and Tab follows (TAB_IN_MODULE_ORDER).
+    "cab": (("Left microphone", "x", 0.0, 0.25), ("Right microphone", "x", 0.75, 1.0),
+            ("Amplifier", "x", 0.25, 0.75)),
     "eq": (("EQ", "x", 0.0, 1.0),),
     "volume": (("Volume", "x", 0.0, 1.0),),
     "postfx": (("Chorus", "y", 0.0, 0.423), ("Delay", "y", 0.423, 0.674), ("Reverb", "y", 0.674, 1.0)),
 }
+
+# Each module's on/off switch, first in its Tab order (see RING_TYPES in archetypex.py): the
+# stomps and the rack units' own buttons, the WAH caption, which is the wah's switch (see
+# DECORATIVE_NAMES), the EQ's button, each microphone's on/off and the amp's power switch. A
+# rack unit's mode button stays after its knobs. The Volume view has no switch of its own.
+MODULE_SWITCHES = frozenset((
+    "WAH", "Compressor pedal",
+    "Overdrive pedal", "Phaser pedal", "Chorus pedal", "Flanger pedal",
+    "Amp power switch",
+    "Left microphone switch", "Right microphone switch",
+    "EQ",
+    "Chorus rack unit", "Delay rack unit", "Reverb rack unit",
+))
+# The plug-in's own order in Pre FX is Chorus, Flanger, Overdrive, Phaser (the pedals' tops are
+# a pixel apart), and Tab goes left to right instead, as the bracket keys do (Hadi, 2026-11-14).
+# In the Cab view the plug-in starts with the miniature amp, and Tab goes left microphone, right
+# microphone, amp, as the bracket keys do (Hadi, 2026-11-15).
+TAB_IN_MODULE_ORDER = frozenset(("prefx", "cab"))
 
 # Value boxes Tab does not pass over (see VALUE_BOX_SUFFIX in archetypex.py).
 # Not passed over: the tempo's box only comes into being when Tab lands on it (0.9.3), so Enter
@@ -529,6 +550,8 @@ class PetrucciProfile(ArchetypeXProfile):
     VIEW_BUTTON_LANDMARKS = VIEW_BUTTON_LANDMARKS
     VIEW_KEYS = VIEW_KEYS
     VIEW_MODULES = VIEW_MODULES
+    MODULE_SWITCHES = MODULE_SWITCHES
+    TAB_IN_MODULE_ORDER = TAB_IN_MODULE_ORDER
     VIEW_POINTER_KNOBS = VIEW_POINTER_KNOBS
     POINTER_KNOB_SKEW = POINTER_KNOB_SKEW
     NOTE_KNOB_NAMES = NOTE_KNOB_NAMES

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.13.4 (2026-11-15)
+
+The on/off switch of each pedal, effects unit, microphone, amplifier and EQ now comes first when you Tab through it. The plug-ins put most of these switches after the knobs.
+
+- Tab reaches a module's switch before its knobs, and Shift+Tab from the first knob goes back to the switch.
+- The brackets land on a module's switch, and the number keys land on the first switch of the section.
+- In the Petrucci X's Pre FX section, Tab goes through the pedals from left to right, as the brackets do. It used to start on the Chorus pedal.
+- In the Cab section, Tab and the brackets go to the left microphone, then the right microphone, then the amplifier. Tab used to start on the amplifier, and the brackets went left, amplifier, right.
+- A microphone's Room switch stays where it was.
+- The Volume section has no switch of its own and is unchanged.
+- The number keys no longer say "decorative background" before the section's first control. It was heard most in the Cab and EQ sections.
+
 ## 0.13.1 (2026-11-12)
 
 The user guide is clearer. The add-on itself is the same as in 0.13.0.

@@ -134,6 +134,29 @@ VIEW_CONTENT_Y = (0.243, 0.85)   # below the 190 pixel top bar, above the amp se
 # VIEW_MODULES in ArchetypeXProfile), so the keys also do something in a view of one module.
 TOP_BAR_MODULE = "Top bar"
 
+# Each module's on/off switch comes first in its Tab order (Hadi, 2026-11-14: "most of them ...
+# have their toggle switch last, in the tab order, so when left and right bracket is pressed,
+# you have to press tab to jump all the way to the end of the module or amp to switch it on or
+# off. could we change this, so those switch toggles come first?"). The plug-in orders its stops
+# by position, so a pedal's stomp, at the bottom, comes after its knobs. tabRing is the view's
+# own controls in the plug-in's order and in this add-on's, which is the plug-in's with each
+# module's switch (MODULE_SWITCHES) moved to the front of its module and, in the views of
+# TAB_IN_MODULE_ORDER, the modules in the bracket keys' order. Tab and Shift+Tab step in only
+# where the two orders differ (_switchFirstPatch); everywhere else the key is the plug-in's.
+# The bracket keys and the number keys land on the first stop of this order.
+#
+# A view's own controls are everything in the tree before the top bar, which follows them: JUCE
+# lists a view's content first. Their position is not enough, because each microphone's PHASE
+# button in the Cab view is below VIEW_CONTENT_Y with the amp selectors.
+RING_TYPES = (CT_SLIDER, CT_BUTTON, CT_COMBOBOX)
+SWITCH_FIRST_KEY = "switchFirstRing"
+# The two ends of the view's own controls: before them in the plug-in's ring is its last stop,
+# the resize button, and after them, past the top bar's background, GATE.
+RING_BEFORE = "before"
+RING_AFTER = "after"
+RING_AFTER_CAPTION = "GATE"
+RESIZE_NAME = "Resize window"
+
 # G and D: which -> (the caption's own Name, how the switch is spoken of). The caption is the
 # switch (see CAPTION_STATE_KEYS), so it is what gets clicked. Focus stays where it was (Hadi,
 # 2026-11-10): the click hands keyboard focus to the caption, so it is sent back once the
@@ -244,6 +267,8 @@ AMP_SELECTOR_MIN = 60.0
 # to 0.33 s after the click and the landing 0.3 s later). That stop, and in other views the
 # selector and the control focus goes back to, are kept quiet for this long after the key.
 AMP_SWITCH_HUSH_S = 1.5
+# The same stop after a number key's click, until the view's first stop takes focus.
+SECTION_SWITCH_HUSH_S = 1.5
 
 # The two captions beside the input mode switch are buttons of their own, on the same setting
 # as the switch (the layout's stereoButton and monoButton: radio values 1 and 0 of
@@ -549,6 +574,13 @@ class ArchetypeXProfile(engine.AmpProfile):
     VIEW_BUTTON_LANDMARKS = {}
     # The modules the bracket keys step through: {view: ((name, axis, low, high), ...)}.
     VIEW_MODULES = {}
+    # The stops that switch a module on and off, which come first in its Tab order (see
+    # RING_TYPES): a button's own Name ("WAH"), its landmark in VIEW_BUTTON_LANDMARKS, or
+    # "Amp power switch" for the amp panel's and the Cab view's miniature panel's power switch.
+    MODULE_SWITCHES = frozenset()
+    # Views whose Tab order goes through the modules in VIEW_MODULES order, the bracket keys'
+    # order, instead of the plug-in's.
+    TAB_IN_MODULE_ORDER = frozenset()
     # The knobs that say where their pointer points, {view: names}, and those among them whose
     # pointer does not move evenly with the value, {name: skew}.
     VIEW_POINTER_KNOBS = {}
@@ -1471,6 +1503,13 @@ class ArchetypeXProfile(engine.AmpProfile):
         if not repeated and self.viewOf(controller) != self.VIEW_KEYS[index]:
             controller._petrucciSectionClick = (index, now)
             controller.clickElement(element)
+            # The plug-in drops focus on the top bar's background while it builds the view, and
+            # the landing follows 30 to 290 ms later. In the Cab and EQ views that was long enough
+            # for NVDA to say "decorative background" first (Hadi, 2026-11-15, his log of 0.13.3).
+            # The click goes down 150 ms from now, so finding the stop here costs it no time.
+            background = self.topBarBackgroundRect(controller)
+            if background:
+                controller.hushFocus([background], SECTION_SWITCH_HUSH_S)
             controller.invalidatePositional()
             controller.invalidateReadouts()
             controller.invalidateStates()
@@ -1481,7 +1520,11 @@ class ArchetypeXProfile(engine.AmpProfile):
         callLater(250, self._landAfterSwitch, controller, index, element, 14, serial)
 
     def _firstTabStop(self, controller):
-        """The showing view's first stop in the plugin's Tab order, or None. See LANDING_TYPES."""
+        """The showing view's first stop in this add-on's Tab order (see RING_TYPES), or failing
+        that in the plugin's, or None. See LANDING_TYPES."""
+        ring = self._buildTabRing(controller)
+        if ring is not None:
+            return ring["items"][ring["order"][0]][3]
         geometry = controller.clientGeometry()
         items = self._sweep(controller)
         if not geometry or not items:
@@ -1962,7 +2005,9 @@ class ArchetypeXProfile(engine.AmpProfile):
 
         Three patches, each anchored on a pair of stops measured to be neighbours in the native
         ring: More preset actions, TUNER, and the tuner window's close and mode buttons. In
-        front of them, the delete question keeps Tab between its own two buttons while it is up.
+        front of them, the delete question keeps Tab between its own two buttons while it is up,
+        and the view's own controls take this add-on's order, each module's switch first (see
+        RING_TYPES), before a plug-in's own patches for its views (viewTabPatch).
         """
         if self._deleteQuestionPatch(obj, controller, backwards):
             return True
@@ -1972,8 +2017,243 @@ class ArchetypeXProfile(engine.AmpProfile):
             return True
         if self._topBarRunPatch(obj, controller, backwards):
             return True
+        if self._switchFirstPatch(obj, controller, backwards):
+            return True
+        if self.viewTabPatch(obj, controller, backwards):
+            return True
         for chain in (self._tunerButtonChain(controller), self._tunerWindowChain(controller)):
             if chain and self._chainStep(obj, controller, backwards, chain):
+                return True
+        return False
+
+    def viewTabPatch(self, obj, controller, backwards):
+        """A plug-in's own Tab patches for its views, asked after the switch-first order. True
+        when focus was moved."""
+        return False
+
+    # ---------- each module's switch first (see RING_TYPES) ----------
+
+    def tabRing(self, controller):
+        """The view's own controls in the plug-in's Tab order and in this add-on's, kept for
+        POSITIONAL_CACHE_TTL. See _buildTabRing."""
+        return controller._positionalSweep(SWITCH_FIRST_KEY, lambda: self._buildTabRing(controller))
+
+    def _contentEnd(self, controller, items):
+        """Where the view's own controls end in the tree: the index of the first element whose
+        middle is in the top bar, which is the top bar's background, or None."""
+        for index, (_controlType, _name, rect, _element) in enumerate(items):
+            fractions = self._fractions(controller, rect)
+            if fractions is not None and fractions[1] + fractions[3] / 2.0 < VIEW_CONTENT_Y[0]:
+                return index
+        return None
+
+    def _moduleSpanAt(self, controller, view, rect):
+        """The view's module whose span holds the middle of a rectangle, or None above the
+        view. Unlike _moduleAt, also below VIEW_CONTENT_Y, for a control known to be the view's."""
+        fractions = self._fractions(controller, rect)
+        if fractions is None:
+            return None
+        xF, yF, wF, hF = fractions
+        cx = xF + wF / 2.0
+        cy = yF + hF / 2.0
+        if cy < VIEW_CONTENT_Y[0]:
+            return None
+        for name, axis, low, high in self.VIEW_MODULES.get(view, ()):
+            if low <= (cx if axis == "x" else cy) < high:
+                return name
+        return None
+
+    def _buildTabRing(self, controller):
+        """_tabRingFrom, or None when it fails: the bracket keys, the number keys and Tab then
+        work as they did before the switch-first order."""
+        try:
+            return self._tabRingFrom(controller)
+        except Exception:
+            log.info("neuralAccess: the switch-first order could not be worked out", exc_info=True)
+            return None
+
+    def _tabRingFrom(self, controller):
+        """The view's own controls as a dict, or None when the view, the tree or where the view's
+        controls end cannot be told:
+          "items"    every element, from _sweep;
+          "end"      the index of the first element after the view's own controls;
+          "native"   the indices of the view's stops, in the plug-in's order;
+          "order"    the same in this add-on's: each module's switch first;
+          "modules"  {module: its indices in this add-on's order};
+          "moduleOf" {index: module};
+          "view"     viewOf's name for the view.
+        The stops are sliders, buttons and lists with a size, passed-over buttons left out
+        (decorativeNames by landmark, as for a view landing). Value boxes and text displays are
+        left out too: Tab passes over all but one, and that one, Delay tempo's box, is in the
+        middle of its module, where the plug-in's order is kept."""
+        view = self.viewOf(controller)
+        if view not in self.VIEW_MODULES:
+            return None
+        items = self._sweep(controller)
+        if not items:
+            return None
+        end = self._contentEnd(controller, items)
+        if end is None:
+            return None
+        panel = None
+        if view == "amp":
+            panel = self.ampPanel(controller)
+        elif view == "cab":
+            panel = self.cabMiniPanel(controller)
+        power = panel.get("power") if panel else None
+        native = []
+        moduleOf = {}
+        switches = {}
+        for index in range(end):
+            controlType, name, rect, _element = items[index]
+            if controlType not in RING_TYPES or rect[2] <= 0 or rect[3] <= 0:
+                continue
+            module = self._moduleSpanAt(controller, view, rect)
+            if module is None:
+                continue
+            key = ""
+            if controlType == CT_BUTTON:
+                landmark = self._landmarkAt(controller, view, rect)
+                if landmark in self.decorativeNames:
+                    continue
+                if (name or "").strip():
+                    key = name.strip()
+                elif power is not None and self._rectMatches(rect, power[1]):
+                    key = "Amp power switch"
+                else:
+                    key = landmark
+            native.append(index)
+            moduleOf[index] = module
+            if key in self.MODULE_SWITCHES and module not in switches:
+                switches[module] = index
+        if not native:
+            return None
+        names = []
+        for index in native:
+            if moduleOf[index] not in names:
+                names.append(moduleOf[index])
+        if view in self.TAB_IN_MODULE_ORDER:
+            rank = dict((entry[0], number) for number, entry in enumerate(self.VIEW_MODULES[view]))
+            names.sort(key=lambda name: rank.get(name, len(rank)))
+        modules = {}
+        for name in names:
+            members = [index for index in native if moduleOf[index] == name]
+            switch = switches.get(name)
+            if switch is not None:
+                members.remove(switch)
+                members.insert(0, switch)
+            modules[name] = members
+        order = [index for name in names for index in modules[name]]
+        return {"items": items, "end": end, "native": native, "order": order,
+                "modules": modules, "moduleOf": moduleOf, "view": view}
+
+    @staticmethod
+    def _ringIndexOf(obj, items):
+        """The index in items of the control obj stands for, by rectangle and type, or None."""
+        try:
+            location = obj.location
+            rect = (location.left, location.top, location.width, location.height)
+        except Exception:
+            return None
+        element = getattr(obj, "UIAElement", None)
+        controlType = _prop(element, PROP_CONTROL_TYPE) if element is not None else None
+        for index, (itemType, _name, itemRect, _element) in enumerate(items):
+            if itemType == controlType and all(abs(a - b) < 3 for a, b in zip(rect, itemRect)):
+                return index
+        return None
+
+    @staticmethod
+    def _ringNeighbour(sequence, index, backwards):
+        """The index before or after index in sequence, or RING_BEFORE or RING_AFTER past its
+        ends."""
+        position = sequence.index(index) + (-1 if backwards else 1)
+        if position < 0:
+            return RING_BEFORE
+        if position >= len(sequence):
+            return RING_AFTER
+        return sequence[position]
+
+    def _ringStep(self, obj, controller, ring, backwards):
+        """(where this add-on's order goes from obj, where the plug-in's goes), each an index
+        into ring["items"], RING_BEFORE or RING_AFTER; (None, None) when obj is none of ours.
+
+        A stop of the view goes to its neighbour in each order. A stop Tab passes over (a lamp,
+        a value box) counts as standing just after the view's stop before it in the plug-in's
+        order, so Shift+Tab from it is always the plug-in's. The resize button and the view's
+        own background lead into the view, GATE and the top bar's background back into it."""
+        items = ring["items"]
+        native = ring["native"]
+        order = ring["order"]
+        at = self._ringIndexOf(obj, items)
+        if at is not None and at in ring["moduleOf"]:
+            return (self._ringNeighbour(order, at, backwards), self._ringNeighbour(native, at, backwards))
+        if at is not None and at < ring["end"] and self.passedOver(obj) \
+                and self._moduleSpanAt(controller, ring["view"], items[at][2]) is not None:
+            before = [index for index in native if index < at]
+            after = [index for index in native if index > at]
+            if backwards:
+                natural = before[-1] if before else RING_BEFORE
+                return (natural, natural)
+            target = self._ringNeighbour(order, before[-1], False) if before else order[0]
+            return (target, after[0] if after else RING_AFTER)
+        label = getattr(obj, "ampLabel", "") or ""
+        if backwards:
+            element = getattr(obj, "UIAElement", None)
+            nativeName = (_prop(element, PROP_NAME, "") or "").strip() if element is not None else ""
+            if label == TOP_BAR_BACKGROUND_NAME or (
+                    nativeName == RING_AFTER_CAPTION and getattr(obj, "ampNativeRole", None) == controlTypes.Role.BUTTON):
+                return (order[-1], native[-1])
+        elif label == RESIZE_NAME and at is not None and not any(
+                controlType in LANDING_TYPES and rect[2] > 0 and rect[3] > 0
+                for controlType, _name, rect, _element in items[at + 1:]):
+            return (order[0], native[0])
+        return (None, None)
+
+    def _ringElement(self, controller, ring, target):
+        """The element for a step of _ringStep: GATE past the end of the view, the last stop in
+        the tree (the resize button) before its start."""
+        if target == RING_AFTER:
+            found = self._captionElement(controller, RING_AFTER_CAPTION)
+            return found[0] if found else None
+        if target == RING_BEFORE:
+            for controlType, _name, rect, element in reversed(ring["items"]):
+                if controlType in LANDING_TYPES and rect[2] > 0 and rect[3] > 0:
+                    return element
+            return None
+        return ring["items"][target][3]
+
+    def _switchFirstPatch(self, obj, controller, backwards):
+        """Tab and Shift+Tab in this add-on's order of the view's own controls, where it differs
+        from the plug-in's (see RING_TYPES). False leaves the key to the plug-in, also when
+        anything here fails: core's Tab sends the key on only after this has answered."""
+        try:
+            return self._switchFirstStep(obj, controller, backwards)
+        except Exception:
+            log.info("neuralAccess: switch-first Tab failed, the key goes to the plug-in", exc_info=True)
+            return False
+
+    def _switchFirstStep(self, obj, controller, backwards):
+        # The view's controls stay in the tree under the tuner window, the MIDI mappings window
+        # and the delete question, which keep Tab to themselves.
+        if self.tunerPanel(controller) is not None or self.midiState(controller) is not None:
+            return False
+        if self._deleteQuestionUp(controller)[0] is not None:
+            return False
+        for fresh in (False, True):
+            if fresh:
+                # What was found a moment ago may have gone with a rebuilt panel.
+                controller.forgetPositional(SWITCH_FIRST_KEY)
+            ring = self.tabRing(controller)
+            if ring is None or ring["order"] == ring["native"]:
+                return False
+            target, natural = self._ringStep(obj, controller, ring, backwards)
+            if target is None or target == natural:
+                return False
+            element = self._ringElement(controller, ring, target)
+            if element is not None and controller.trySetFocus(element):
+                log.info("neuralAccess: switch-first %s: to %r" % (
+                    "Shift+Tab" if backwards else "Tab",
+                    target if target in (RING_BEFORE, RING_AFTER) else ring["items"][target][2]))
                 return True
         return False
 
@@ -2749,19 +3029,23 @@ class ArchetypeXProfile(engine.AmpProfile):
                 return name
         return None
 
-    def moduleStops(self, controller):
+    def moduleStops(self, controller, ring=None):
         """[(module name, element)] for the view that is showing, in the order the bracket keys
         step through them: the top bar, then the view's own modules.
 
-        The element is the module's first stop in the plug-in's Tab order, found as a view
-        landing is (see LANDING_TYPES): the first operable control in document order, lamps and
-        dimming layers passed over. In the top bar the row of section buttons is passed over
-        too - they have the number keys - which makes GATE its first stop, as it is for Tab.
-        Empty when the view cannot be told or is not a view (the audio settings).
+        The element is the module's first stop in this add-on's Tab order, its on/off switch
+        where it has one (see RING_TYPES). Where that order cannot be had, it is the module's
+        first stop in the plug-in's, found as a view landing is (see LANDING_TYPES): the first
+        operable control in document order, lamps and dimming layers passed over. In the top
+        bar the row of section buttons is passed over too - they have the number keys - which
+        makes GATE its first stop, as it is for Tab. Empty when the view cannot be told or is
+        not a view (the audio settings). ring, when given, is a _buildTabRing just made.
         """
         view = self.viewOf(controller)
         geometry = controller.clientGeometry()
-        items = self._sweep(controller)
+        if ring is None:
+            ring = self._buildTabRing(controller)
+        items = ring["items"] if ring is not None else self._sweep(controller)
         if view not in self.VIEW_MODULES or not geometry or not items:
             return []
         _left, top, _width, height = geometry
@@ -2778,6 +3062,9 @@ class ArchetypeXProfile(engine.AmpProfile):
             elif controlType == CT_BUTTON and self._landmarkAt(controller, view, rect) in self.decorativeNames:
                 continue
             first[module] = element
+        if ring is not None and ring["view"] == view:
+            for name, members in ring["modules"].items():
+                first[name] = items[members[0]][3]
         order = (TOP_BAR_MODULE,) + tuple(entry[0] for entry in self.VIEW_MODULES[view])
         return [(name, first[name]) for name in order if name in first]
 
@@ -2792,7 +3079,8 @@ class ArchetypeXProfile(engine.AmpProfile):
             # So is the MIDI mappings window, and its mask keeps clicks from the view.
             ui.message("Close the MIDI mappings window first.")
             return True
-        stops = self.moduleStops(controller)
+        ring = self._buildTabRing(controller)
+        stops = self.moduleStops(controller, ring)
         if not stops:
             ui.message("No modules to move between here.")
             return True
@@ -2801,7 +3089,14 @@ class ArchetypeXProfile(engine.AmpProfile):
         rect = _prop(focus, PROP_BOUNDING_RECT) if focus is not None else None
         current = None
         if rect and len(rect) >= 4:
-            current = self._moduleAt(controller, self.viewOf(controller), tuple(rect[:4]))
+            rect = tuple(rect[:4])
+            current = self._moduleAt(controller, self.viewOf(controller), rect)
+            if current is None and ring is not None:
+                # A stop of the view below VIEW_CONTENT_Y, such as a microphone's PHASE button.
+                for index in ring["native"]:
+                    if self._rectMatches(rect, ring["items"][index][2]):
+                        current = ring["moduleOf"][index]
+                        break
         if current in names:
             index = (names.index(current) + direction) % len(names)
         else:
