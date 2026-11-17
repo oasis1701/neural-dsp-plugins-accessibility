@@ -457,6 +457,64 @@ def modifiersDown():
         return False
 
 
+VK_SHIFT = 0x10
+
+# How long Tab and Shift+Tab wait after the add-on starts a click, in seconds. A click goes down
+# 150 ms after it is asked for and up at 230 (AmpController.clickElement); a double click's four
+# events are over by about 270 ms. A Tab pressed in between moved focus on, and the button then
+# went down on the control focus had left, which takes focus back to it. Hadi, 2026-11-16: Enter
+# on a microphone switch, then Tab within about 150 ms, ended on the switch again. Held, the key
+# goes in the order pressed: the click, then the Tab from where focus is.
+CLICK_HOLD_S = 0.27
+DOUBLE_CLICK_HOLD_S = 0.32
+
+
+def keyMayArriveWrong(backwards, shiftHeld):
+    """True when Tab or Shift+Tab, sent on now, reaches the plug-in as the other key.
+
+    REAPER and the plug-in take Shift from the key as it stands when they get to the Tab, not
+    from what was pressed. Hadi, 2026-11-16: Shift+Tab from a Cab microphone list went forward
+    to the microphone's switch, "jumps over the two prev/next buttons". In his log every one
+    of those was sent on 100 to 270 ms after the key, with Shift already let go. Putting Shift
+    back in front of the Tab did not help: seven sent with 0.13.6's own Shift and three with
+    NVDA's (19:21 to 19:22) all went forward. The other way round, a Tab sent late while Shift was
+    already down for the next key went backwards (19:22:18, 19:22:33, 19:22:35). So where the
+    step is known it is taken by focus (nativeTabStep), and this only marks the log."""
+    return bool(backwards) != bool(shiftHeld)
+
+
+def sendTab(gesture, backwards, started=None, rect=None):
+    """Sends Tab or Shift+Tab on to the plug-in, and logs it with the state of Shift and the
+    time since the key was taken (started), after the key is out so the line costs it nothing.
+    Turn the line off together with FOCUS_LOG."""
+    shiftHeld = None
+    try:
+        shiftHeld = bool(_user32.GetAsyncKeyState(VK_SHIFT) & 0x8000)
+    except Exception:
+        pass
+    gesture.send()
+    try:
+        log.info("neuralAccess: key %s from %s sent on to the plug-in; Shift %s%s%s" % (
+            "Shift+Tab" if backwards else "Tab", tuple(rect) if rect else None,
+            {True: "held", False: "up", None: "unknown"}[shiftHeld],
+            ", %d ms after the key" % ((time.time() - started) * 1000) if started else "",
+            "; it may arrive as %s" % ("Tab" if backwards else "Shift+Tab")
+            if shiftHeld is not None and keyMayArriveWrong(backwards, shiftHeld) else ""))
+    except Exception:
+        pass
+
+
+def tabFrom(obj, amp, gesture, backwards, started):
+    """Tab or Shift+Tab from obj: the profile's own splices first, then the plug-in's own step
+    taken by focus where it is known, and only then the key itself."""
+    amp.noteTab(backwards)
+    if amp.profile.tabPatch(obj, amp, backwards):
+        return
+    if amp.profile.nativeTabStep(obj, amp, backwards):
+        return
+    sendTab(gesture, backwards, started, _objRect(obj))
+
+
 def _setCursorPos(x, y):
     ctypes.windll.user32.SetCursorPos(int(x), int(y))
 
@@ -821,6 +879,12 @@ class AmpProfile(object):
 
         Returns True when focus was moved; False passes the key to the application.
         """
+        return False
+
+    def nativeTabStep(self, obj, controller, backwards):
+        """Asked after tabPatch: the application's own Tab or Shift+Tab step, taken by moving
+        focus instead of sending the key, where the profile knows that step. True when focus
+        was moved; False sends the key on (see sendTab)."""
         return False
 
     def passedOver(self, obj):
@@ -1207,6 +1271,41 @@ class AmpController(object):
         """Remembers a Tab or Shift+Tab the user pressed inside the editor."""
         self._lastTab = (backwards, time.time(), 0)
 
+    def holdKeys(self, seconds):
+        """Tab and Shift+Tab wait this long from now (see CLICK_HOLD_S); a longer hold already
+        running is kept."""
+        self._keysHeldUntil = max(getattr(self, "_keysHeldUntil", 0.0), time.time() + seconds)
+
+    def keysHeldFor(self):
+        """Seconds Tab and Shift+Tab are still held for, 0 when they are not."""
+        return max(0.0, getattr(self, "_keysHeldUntil", 0.0) - time.time())
+
+    def holdTab(self, gesture, backwards):
+        """Keeps a Tab or Shift+Tab pressed during a hold, to be carried out in the order pressed
+        once the hold is over (see _runHeldTabs)."""
+        held = getattr(self, "_heldTabs", None)
+        if held is None:
+            held = self._heldTabs = []
+        held.append((gesture, backwards))
+        if len(held) == 1:
+            wait = self.keysHeldFor()
+            log.info("neuralAccess: %s held %d ms for a click to finish" % (
+                "Shift+Tab" if backwards else "Tab", wait * 1000))
+            core.callLater(int(wait * 1000) + 5, self._runHeldTabs)
+
+    def _runHeldTabs(self):
+        if self.keysHeldFor() > 0:
+            # Another click began in the meantime.
+            core.callLater(int(self.keysHeldFor() * 1000) + 5, self._runHeldTabs)
+            return
+        held, self._heldTabs = getattr(self, "_heldTabs", None) or [], []
+        for gesture, backwards in held:
+            obj = api.getFocusObject()
+            if isinstance(obj, AmpObject) and obj.ampController is self:
+                tabFrom(obj, self, gesture, backwards, None)
+            else:
+                gesture.send()
+
     def skipDecorative(self, obj):
         """Passes over a decorative stop that Tab has just landed on, in the same direction.
 
@@ -1232,9 +1331,12 @@ class AmpController(object):
         try:
             if self.profile.tabPatch(obj, self, backwards):
                 return True
+            if self.profile.nativeTabStep(obj, self, backwards):
+                return True
         except Exception:
             log.debugWarning("neuralAccess: the ring's splices failed on a passed-over stop", exc_info=True)
-        KeyboardInputGesture.fromName("shift+tab" if backwards else "tab").send()
+        sendTab(KeyboardInputGesture.fromName("shift+tab" if backwards else "tab"), backwards,
+                rect=_objRect(obj))
         return True
 
     def hushFocus(self, rects, seconds, everything=False):
@@ -2228,6 +2330,10 @@ class AmpController(object):
                 log.info("neuralAccess: click abandoned, window %r covers the target" % (under,))
                 return
             pressed["down"] = True
+            # The button goes down wherever the pointer is now. Another click's restore, or a
+            # second press of the key, can have moved it since it was put on the target.
+            log.info("neuralAccess: click: %s button down at pointer %s, aimed at (%d, %d)" % (
+                "right" if right else "left", _cursorPos(), x, y))
             _mouseEvent(MOUSEEVENTF_RIGHTDOWN if right else MOUSEEVENTF_LEFTDOWN)
 
         def up():
@@ -2259,6 +2365,7 @@ class AmpController(object):
 
         core.callLater(150, down)
         core.callLater(230, up)
+        self.holdKeys(CLICK_HOLD_S)
         if origin:
             core.callLater(360, restore, False)
             core.callLater(800, restore, True)
@@ -2312,6 +2419,7 @@ class AmpController(object):
             _setCursorPos(origin[0], origin[1])
 
         core.callLater(150, press)
+        self.holdKeys(DOUBLE_CLICK_HOLD_S)
         if origin:
             # The four events are over about 270 ms after the call.
             core.callLater(330, restore)
@@ -2705,9 +2813,11 @@ class AmpObject(UIA):
             return
         if amp is not None:
             backwards = any("shift" in identifier for identifier in (gesture.identifiers or ()))
-            amp.noteTab(backwards)
-            if amp.profile.tabPatch(self, amp, backwards):
+            if amp.keysHeldFor() > 0 or getattr(amp, "_heldTabs", None):
+                amp.holdTab(gesture, backwards)
                 return
+            tabFrom(self, amp, gesture, backwards, time.time())
+            return
         gesture.send()
 
     @script(description="Presses the focused control, clicking the few buttons that ignore Enter.",

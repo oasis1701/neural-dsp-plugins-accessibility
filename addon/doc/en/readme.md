@@ -21,7 +21,7 @@ The Petrucci X has seven sections.
 - **1, Wah Comp.** A wah pedal and a compressor.
 - **2, Pre FX.** Overdrive, phaser, chorus and flanger pedals.
 - **3, Amp.** Four amplifiers, Piezo, Clean, Rhythm and Lead.
-- **4, Cab.** Two microphones, each with its own room. Includes a custom IR loader for both. The Piezo amplifier has no Cab section.
+- **4, Cab.** Two microphones, each with its own room, placed close, mid or far. Includes a custom IR loader for both. The Piezo amplifier has no Cab section.
 - **5, EQ.** A four-band equaliser with high-pass and low-pass filters. The Piezo amplifier has no EQ section.
 - **6, Volume.** A volume pedal.
 - **7, Post FX.** Chorus, delay and reverb rack-mounted units.
@@ -76,6 +76,8 @@ All of these keys work while you are inside the plug-in.
 - **Home** and **End** set it to its minimum and maximum.
 - **Enter** presses a button or flips a switch. A switch then says its new position.
 - **Enter** on a knob that has a value box takes you into the box. Type a value and press Enter to set it.
+- **Enter** on a microphone's previous or next arrow in the Cab section picks the neighbouring microphone and says its name. Focus stays on the arrow.
+- **Enter** on one of the Petrucci X's room distance buttons, Close, Mid or Far, chooses it. Each of the three says whether it is the chosen one.
 - **M** or the **Applications key** opens the focused control's right-click menu. Reset parameter puts the control back to its default value. Enable MIDI Learn assigns a MIDI control to it. Choose it, then move a knob or press a switch on your MIDI controller, and NVDA says "MIDI learned". Show MIDI Map opens the MIDI mappings window.
 
 ### Sections

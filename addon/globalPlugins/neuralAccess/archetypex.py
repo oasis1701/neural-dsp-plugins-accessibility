@@ -155,6 +155,18 @@ SWITCH_FIRST_KEY = "switchFirstRing"
 RING_BEFORE = "before"
 RING_AFTER = "after"
 RING_AFTER_CAPTION = "GATE"
+# The top bar's preset row buttons, of which the plug-in shows three at a time, and the bottom
+# bar's About button; with the bottom bar's band (as a fraction of the editor's height, from
+# 754 of 782). See _barChains.
+PRESET_ROW_NAMES = ("DELETE", "SAVE", "SAVE AS...", "IMPORT", "RESET", "LOCATE FILE")
+ABOUT_NAME = "DEVELOPED BY NEURAL DSP"
+BOTTOM_BAR_Y = 0.95
+# After this add-on moves focus along the ring itself, NVDA reports the new stop a moment later.
+# A second Tab pressed before that is still bound to the stop focus left, and worked out from
+# there it would land where the first one did: two Tabs, one move (Hadi's log, 2026-11-16,
+# 18:31:07.904 and .923). For this long, or until NVDA reports a focus change, a key on the stop
+# focus was sent from counts as pressed on the stop it was sent to.
+RING_PENDING_S = 1.0
 RESIZE_NAME = "Resize window"
 
 # G and D: which -> (the caption's own Name, how the switch is spoken of). The caption is the
@@ -221,6 +233,14 @@ _deleteQuestionController = None
 MORE_ACTIONS_FIRST = "IMPORT"
 MORE_ACTIONS_POLL_MS = 120
 MORE_ACTIONS_POLLS = 12
+
+# The Cab view's microphone arrows (positionalLabel names them) step that side's list, which
+# shows the chosen microphone as its name. After a press the list is looked at this often, this
+# many times (about two and a half seconds, for the plug-in loading the microphone), and the
+# name is said once it differs from before and reads the same twice running.
+MIC_ARROW_SUFFIXES = (" previous microphone", " next microphone")
+MIC_ARROW_POLL_MS = 100
+MIC_ARROW_POLLS = 25
 
 # The EQ view's two filters are off at one end of their travel, where the display beside the
 # knob prints OFF: the high pass at its minimum (20 of 20 to 500 hertz), the low pass at its
@@ -434,7 +454,25 @@ LANDING_PREFIX_S = 2.0
 CAB_MINI_BAND = (0.40, 0.47)
 
 # Names the Cab view uses on both of its sides; they are told apart by which half they sit in.
-CAB_SIDED_NAMES = {"CLOSE": "close", "MID": "mid", "FAR": "far", "ROOM": "room", "PHASE": "phase"}
+# CLOSE, MID and FAR say what they are: "Left close" alone left Hadi asking what it was
+# (2026-11-16).
+CAB_SIDED_NAMES = {"CLOSE": "room distance close", "MID": "room distance mid", "FAR": "room distance far",
+                   "ROOM": "room", "PHASE": "phase"}
+
+# The Petrucci's room distance buttons: CLOSE, MID and FAR under each Cab side's room level knob
+# (layout cabPanelView, action selectDistance on mouse down; the host parameters "Room L
+# Distance" and "Room R Distance", 0 Close, 1 Mid, 2 Far, default Close). The plug-in's own Tab
+# passes over them, and this add-on's ring reaches them since 0.13.7. Hadi kept them (2026-11-16:
+# "if we skip this, doesn't this mean that we'd be missing out on these feautres?"). They are
+# radio buttons here, chosen or not, read off the screen: the chosen one is drawn filled (skin
+# cabRoomDistanceButton, selectedBackgroundColour U90, white at 24 percent opacity) and the other
+# two only outlined. Measured on captures 1 and 13, on a dark and on a light background, the
+# grey inside the chosen button is 25 to 26 above the panel just right of it, and inside the
+# others -6 to +1. After Enter the chosen one is looked for this often, this many times.
+DISTANCE_NAMES = frozenset(("CLOSE", "MID", "FAR"))
+DISTANCE_FILL_MIN = 12
+DISTANCE_POLL_MS = 150
+DISTANCE_POLLS = 10
 
 # How far the pointer of a knob turns, in degrees, with 12 o'clock at the middle. Each knob is
 # drawn from a strip of 101 pictures, one for each percent: PetrucciAmp<Amp>Knob.png for the amp
@@ -1301,6 +1339,11 @@ class ArchetypeXProfile(engine.AmpProfile):
                 return None
             mode = self.tunerMode(controller)
             return None if mode is None else (mode == native)
+        if native in DISTANCE_NAMES:
+            if self.viewOf(controller) != "cab":
+                return None
+            rect = engine._objRect(obj)
+            return self.distanceChosen(controller, rect) if rect else None
         fractions = self._objFractions(obj, controller)
         if fractions is None:
             return None
@@ -1542,15 +1585,16 @@ class ArchetypeXProfile(engine.AmpProfile):
             return element
         return None
 
-    def _landmarkAt(self, controller, view, rect):
-        """The button landmark name at a raw rectangle in the given view, or ""."""
+    def _landmarkAt(self, controller, view, rect, tables=None):
+        """The button landmark name at a raw rectangle in the given view, or "". tables gives
+        another set of landmarks, such as VIEW_SLIDER_LANDMARKS."""
         fractions = self._fractions(controller, rect)
         if fractions is None:
             return ""
         xF, yF, wF, hF = fractions
         cx = xF + wF / 2.0
         cy = yF + hF / 2.0
-        for ly, lx, name in self.VIEW_BUTTON_LANDMARKS.get(view, ()):
+        for ly, lx, name in (self.VIEW_BUTTON_LANDMARKS if tables is None else tables).get(view, ()):
             if abs(cy - ly) <= 0.02 and abs(cx - lx) <= 0.012:
                 return name
         return ""
@@ -2025,7 +2069,21 @@ class ArchetypeXProfile(engine.AmpProfile):
         for chain in (self._tunerButtonChain(controller), self._tunerWindowChain(controller)):
             if chain and self._chainStep(obj, controller, backwards, chain):
                 return True
-        return False
+        return self._barChainPatch(obj, controller, backwards)
+
+    def _barChainPatch(self, obj, controller, backwards):
+        """The bars' runs (_barChains). False leaves the key to the plug-in, also when anything
+        here fails: core's Tab sends the key on only after tabPatch has answered."""
+        try:
+            if self.tunerPanel(controller) is not None or self.midiState(controller) is not None:
+                return False
+            for chain in self._barChains(controller):
+                if self._chainStep(obj, controller, backwards, chain):
+                    return True
+            return False
+        except Exception:
+            log.info("neuralAccess: the bars' Tab order failed, the key goes to the plug-in", exc_info=True)
+            return False
 
     def viewTabPatch(self, obj, controller, backwards):
         """A plug-in's own Tab patches for its views, asked after the switch-first order. True
@@ -2083,8 +2141,9 @@ class ArchetypeXProfile(engine.AmpProfile):
           "modules"  {module: its indices in this add-on's order};
           "moduleOf" {index: module};
           "view"     viewOf's name for the view.
-        The stops are sliders, buttons and lists with a size, passed-over buttons left out
-        (decorativeNames by landmark, as for a view landing). Value boxes and text displays are
+        The stops are sliders, buttons and lists with a size, passed-over ones left out
+        (decorativeNames by landmark: buttons as for a view landing, and sliders such as the
+        Petrucci delay's two time readouts). Value boxes and text displays are
         left out too: Tab passes over all but one, and that one, Delay tempo's box, is in the
         middle of its module, where the plug-in's order is kept."""
         view = self.viewOf(controller)
@@ -2113,6 +2172,8 @@ class ArchetypeXProfile(engine.AmpProfile):
             if module is None:
                 continue
             key = ""
+            if controlType == CT_SLIDER                     and self._landmarkAt(controller, view, rect, self.VIEW_SLIDER_LANDMARKS) in self.decorativeNames:
+                continue
             if controlType == CT_BUTTON:
                 landmark = self._landmarkAt(controller, view, rect)
                 if landmark in self.decorativeNames:
@@ -2174,6 +2235,57 @@ class ArchetypeXProfile(engine.AmpProfile):
             return RING_AFTER
         return sequence[position]
 
+    @staticmethod
+    def _notePendingRing(controller, fromRect, toRect):
+        """Remembers that focus was just sent from one ring stop to another (see RING_PENDING_S).
+        engine's focus handling forgets it as soon as NVDA reports any focus change."""
+        controller._ringPending = (tuple(fromRect[:4]), tuple(toRect[:4]), time.time() + RING_PENDING_S)
+
+    @staticmethod
+    def _pendingTarget(controller, rect):
+        """The rectangle focus was just sent to from rect, while NVDA has not reported the move
+        (see RING_PENDING_S), else None."""
+        pending = getattr(controller, "_ringPending", None)
+        if not rect or not pending:
+            return None
+        fromRect, toRect, expiry = pending
+        if time.time() > expiry:
+            controller._ringPending = None
+            return None
+        if not all(abs(a - b) < 3 for a, b in zip(rect, fromRect)):
+            return None
+        return toRect
+
+    def _pendingRingIndex(self, controller, items, at):
+        """at, or the index of the stop focus was just sent to when at is the stop it was sent
+        from and NVDA has not reported the move yet."""
+        toRect = self._pendingTarget(controller, items[at][2]) if at is not None else None
+        if toRect is None:
+            return at
+        for index, (_type, _name, rect, _element) in enumerate(items):
+            if all(abs(a - b) < 3 for a, b in zip(rect, toRect)):
+                return index
+        return at
+
+    def _keptBoxBetween(self, controller, ring, at, natural, backwards):
+        """True when the plug-in's own key would stop on a value box that Tab does not pass over
+        (VALUE_BOX_KEPT) on its way: Tab from that box's knob, or Shift+Tab onto the knob. The
+        tempo's box comes into being only when Tab lands on it (0.9.3), so it is in no ring and
+        focus cannot be put there; the key has to go to the plug-in."""
+        knobs = [name[:-len(VALUE_BOX_SUFFIX)] for name in self.VALUE_BOX_KEPT]
+        index = natural if backwards else at
+        if not knobs or index is None or index in (RING_BEFORE, RING_AFTER):
+            return False
+        fractions = self._fractions(controller, ring["items"][index][2])
+        if fractions is None:
+            return False
+        xF, yF, wF, hF = fractions
+        cx, cy = xF + wF / 2.0, yF + hF / 2.0
+        for ly, lx, name in self.VIEW_SLIDER_LANDMARKS.get(ring["view"], ()):
+            if name in knobs and abs(cy - ly) <= 0.02 and abs(cx - lx) <= 0.012:
+                return True
+        return False
+
     def _ringStep(self, obj, controller, ring, backwards):
         """(where this add-on's order goes from obj, where the plug-in's goes), each an index
         into ring["items"], RING_BEFORE or RING_AFTER; (None, None) when obj is none of ours.
@@ -2185,7 +2297,7 @@ class ArchetypeXProfile(engine.AmpProfile):
         items = ring["items"]
         native = ring["native"]
         order = ring["order"]
-        at = self._ringIndexOf(obj, items)
+        at = self._pendingRingIndex(controller, items, self._ringIndexOf(obj, items))
         if at is not None and at in ring["moduleOf"]:
             return (self._ringNeighbour(order, at, backwards), self._ringNeighbour(native, at, backwards))
         if at is not None and at < ring["end"] and self.passedOver(obj) \
@@ -2233,12 +2345,51 @@ class ArchetypeXProfile(engine.AmpProfile):
             log.info("neuralAccess: switch-first Tab failed, the key goes to the plug-in", exc_info=True)
             return False
 
-    def _switchFirstStep(self, obj, controller, backwards):
-        # The view's controls stay in the tree under the tuner window, the MIDI mappings window
-        # and the delete question, which keep Tab to themselves.
+    def _ringCovered(self, controller):
+        """False while the tuner window, the MIDI mappings window or the delete question is up:
+        the view's controls stay in the tree under them, and they keep Tab to themselves."""
         if self.tunerPanel(controller) is not None or self.midiState(controller) is not None:
             return False
-        if self._deleteQuestionUp(controller)[0] is not None:
+        return self._deleteQuestionUp(controller)[0] is None
+
+    def nativeTabStep(self, obj, controller, backwards):
+        """The plug-in's own Tab or Shift+Tab step among the view's controls, taken by moving
+        focus, so that no key is sent on (see engine.keyMayArriveWrong). Asked after every
+        patch has passed. The step is the plug-in's neighbour in the ring (RING_TYPES), the
+        same one the key would have reached, in both directions and also where this add-on's
+        order is the plug-in's (the Volume view). Anything not in the ring, or any failure,
+        sends the key on as before."""
+        try:
+            if not self._ringCovered(controller):
+                return False
+            for fresh in (False, True):
+                if fresh:
+                    # What was found a moment ago may have gone with a rebuilt panel.
+                    controller.forgetPositional(SWITCH_FIRST_KEY)
+                ring = self.tabRing(controller)
+                if ring is None:
+                    return False
+                at = self._pendingRingIndex(controller, ring["items"], self._ringIndexOf(obj, ring["items"]))
+                _target, natural = self._ringStep(obj, controller, ring, backwards)
+                if natural is None:
+                    return False
+                if self._keptBoxBetween(controller, ring, at, natural, backwards):
+                    return False
+                element = self._ringElement(controller, ring, natural)
+                if element is not None and controller.trySetFocus(element):
+                    log.info("neuralAccess: the plug-in's %s, taken by focus: to %r" % (
+                        "Shift+Tab" if backwards else "Tab",
+                        natural if natural in (RING_BEFORE, RING_AFTER) else ring["items"][natural][2]))
+                    if at is not None and natural not in (RING_BEFORE, RING_AFTER):
+                        self._notePendingRing(controller, ring["items"][at][2], ring["items"][natural][2])
+                    return True
+            return False
+        except Exception:
+            log.info("neuralAccess: the plug-in's Tab by focus failed, the key goes to the plug-in", exc_info=True)
+            return False
+
+    def _switchFirstStep(self, obj, controller, backwards):
+        if not self._ringCovered(controller):
             return False
         for fresh in (False, True):
             if fresh:
@@ -2247,6 +2398,7 @@ class ArchetypeXProfile(engine.AmpProfile):
             ring = self.tabRing(controller)
             if ring is None or ring["order"] == ring["native"]:
                 return False
+            at = self._pendingRingIndex(controller, ring["items"], self._ringIndexOf(obj, ring["items"]))
             target, natural = self._ringStep(obj, controller, ring, backwards)
             if target is None or target == natural:
                 return False
@@ -2255,17 +2407,86 @@ class ArchetypeXProfile(engine.AmpProfile):
                 log.info("neuralAccess: switch-first %s: to %r" % (
                     "Shift+Tab" if backwards else "Tab",
                     target if target in (RING_BEFORE, RING_AFTER) else ring["items"][target][2]))
+                if at is not None and target not in (RING_BEFORE, RING_AFTER):
+                    self._notePendingRing(controller, ring["items"][at][2], ring["items"][target][2])
                 return True
         return False
+
+    def _barChains(self, controller):
+        """The plug-in's own Tab order through its top and bottom bars, as three chains for
+        _chainStep, so that these moves too are made by focus and no key is sent (see
+        engine.keyMayArriveWrong). Their ends are taken already, by the switch-first ring (GATE,
+        Resize window), the preset row (the preset display, DOUBLER) and the Tuner chain (the
+        Input mode switch, MIDI). From Hadi's logs, Petrucci X (2026-11-16, 18:11:52 to :55,
+        18:12:30 to :33, 18:27:03 to :06) and Nolly X (11:18:49 to :50), in the plug-in's order:
+
+          GATE, the preset row's buttons left to right (DELETE, SAVE, SAVE AS... for a user
+              preset; IMPORT, RESET, LOCATE FILE with More preset actions open), the preset display;
+          DOUBLER, Input, Gate threshold, Transpose, Doubler spread, Output, the Input mode switch;
+          MIDI, DEVELOPED BY NEURAL DSP, Resize window.
+
+        The tree order is no guide here: it has the section buttons, the preset arrows and the
+        amp selectors among these, and the plug-in's Tab stops on none of them. In a host only:
+        the standalone's bottom bar has tap tempo, a metronome and settings, whose order has not
+        been seen. A run missing any stop is left out, and its keys go to the plug-in as before."""
+        def build():
+            if not controller.hosted:
+                return []
+            items = self._sweep(controller) or []
+            geometry = controller.clientGeometry()
+            if not items or not geometry:
+                return []
+            _left, top, _width, height = geometry
+            header = {}
+            bottom = {}
+            for controlType, name, rect, element in items:
+                if controlType != CT_BUTTON or not rect or len(rect) < 4 or rect[2] <= 0 or rect[3] <= 0:
+                    continue
+                yF = (rect[1] - top) / height
+                entry = (tuple(rect[:4]), element, CT_BUTTON)
+                if HEADER_Y[0] <= yF <= HEADER_Y[1]:
+                    header.setdefault((name or "").strip(), entry)
+                elif yF >= BOTTOM_BAR_Y:
+                    bottom.setdefault((name or "").strip(), entry)
+            chains = []
+            gate = header.get(RING_AFTER_CAPTION)
+            display = self.presetDisplayElement(controller)
+            displayRect = _prop(display, PROP_BOUNDING_RECT) if display is not None else None
+            if gate is not None and displayRect and len(displayRect) >= 4:
+                row = sorted((header[name] for name in PRESET_ROW_NAMES if name in header), key=lambda entry: entry[0][0])
+                chains.append([gate] + row + [(tuple(displayRect[:4]), display, CT_BUTTON)])
+            doubler = header.get("DOUBLER")
+            knobs = self.topKnobElements(controller)
+            switch = self.inputModeSwitchElement(controller)
+            if doubler is not None and len(knobs) == len(TOP_KNOB_NAMES) and switch is not None:
+                chains.append([doubler] + [(tuple(rect[:4]), element, CT_SLIDER) for _x, rect, element in knobs]
+                              + [(tuple(switch[0][:4]), switch[1], CT_BUTTON)])
+            midi = bottom.get("MIDI")
+            about = bottom.get(ABOUT_NAME)
+            resize = None
+            for controlType, _name, rect, element in reversed(items):
+                if controlType in LANDING_TYPES and rect and rect[2] > 0 and rect[3] > 0:
+                    resize = (tuple(rect[:4]), element, controlType)
+                    break
+            if midi is not None and about is not None and resize is not None \
+                    and midi[0][0] < about[0][0] < resize[0][0]:
+                chains.append([midi, about, resize])
+            return chains
+        return controller._positionalSweep("barChains", build)
 
     def _chainStep(self, obj, controller, backwards, chain):
         """Moves along a chain of (rect, element, controlType) whose two ends are neighbours in
         the native ring. The ends pass the key on when it points out of the chain."""
         objType = _prop(obj.UIAElement, PROP_CONTROL_TYPE)
+        # A second quick key still bound to the stop focus was just sent from (RING_PENDING_S).
+        pendingTo = self._pendingTarget(controller, engine._objRect(obj))
         for index, (rect, _element, controlType) in enumerate(chain):
+            if pendingTo is not None:
+                if not all(abs(a - b) < 3 for a, b in zip(rect, pendingTo)):
+                    continue
             # The reference pitch slider and its text box share one rectangle; the type is
             # what tells them apart.
-            if controlType != objType or not self._sameControl(obj, rect):
+            elif controlType != objType or not self._sameControl(obj, rect):
                 continue
             if backwards:
                 if index == 0:
@@ -2275,7 +2496,12 @@ class ArchetypeXProfile(engine.AmpProfile):
                 if index == len(chain) - 1:
                     return False
                 target = chain[index + 1]
-            return controller.trySetFocus(target[1])
+            moved = controller.trySetFocus(target[1])
+            if moved:
+                self._notePendingRing(controller, rect, target[0])
+                log.info("neuralAccess: chain: %s from %r to %r" % (
+                    "Shift+Tab" if backwards else "Tab", tuple(rect), tuple(target[0])))
+            return moved
         return False
 
     def inputModeSwitchElement(self, controller):
@@ -2392,11 +2618,16 @@ class ArchetypeXProfile(engine.AmpProfile):
         run.append((doubler[0], doubler[1], False) if doubler is not None else None)
         if len(run) <= 2:
             return False
+        # A second quick key still bound to the stop focus was just sent from (RING_PENDING_S).
+        pendingTo = self._pendingTarget(controller, engine._objRect(obj))
         for index, stop in enumerate(run):
             if stop is None:
                 continue
             rect, _element, whole = stop
-            if not (self._isLandingTarget(obj, rect, CT_BUTTON) if whole else self._sameControl(obj, rect)):
+            if pendingTo is not None:
+                if not all(abs(a - b) < 3 for a, b in zip(rect, pendingTo)):
+                    continue
+            elif not (self._isLandingTarget(obj, rect, CT_BUTTON) if whole else self._sameControl(obj, rect)):
                 continue
             # From the display only Tab is taken, and from DOUBLER only Shift+Tab: the other way
             # out of each is the plug-in's own.
@@ -2407,7 +2638,10 @@ class ArchetypeXProfile(engine.AmpProfile):
                 return False
             log.info("neuralAccess: preset row: %s from stop %d of %d to %r" % (
                 "Shift+Tab" if backwards else "Tab", index + 1, len(run), target[0]))
-            return controller.trySetFocus(target[1])
+            moved = controller.trySetFocus(target[1])
+            if moved:
+                self._notePendingRing(controller, rect, target[0])
+            return moved
         return False
 
     def _presetArrowDirection(self, obj, controller):
@@ -2912,6 +3146,8 @@ class ArchetypeXProfile(engine.AmpProfile):
             return True
         if home is not None:
             callLater(QUICK_RETURN_MS, self._returnHome, controller, home[0])
+            # A Tab pressed before focus is back would be undone by the return.
+            controller.holdKeys((QUICK_RETURN_MS + 60) / 1000.0)
         # A newer press of either key takes over the reporting, so a quick double press says
         # where the switch ended up once instead of twice.
         serial = getattr(controller, "_petrucciQuickSerial", 0) + 1
@@ -4686,6 +4922,122 @@ class ArchetypeXProfile(engine.AmpProfile):
 
         callLater(MORE_ACTIONS_POLL_MS, poll, MORE_ACTIONS_POLLS)
 
+    def distanceChosen(self, controller, rect):
+        """True when the room distance button at rect is the chosen one, False when it is not,
+        None when the screen cannot be read. See DISTANCE_FILL_MIN."""
+        x, y, w, h = (int(round(value)) for value in rect[:4])
+        if w < 12 or h < 12:
+            return None
+        box = controller.screenBox(x, y, w + 6, h)
+        if box is None:
+            return None
+
+        def grey(px, py):
+            red, green, blue = box.at(px, py)
+            return (red + green + blue) / 3.0
+
+        inside = sorted(grey(px, py) for px in range(3, w - 3) for py in (3, 4, h - 5, h - 4))
+        beside = sorted(grey(px, py) for px in range(w + 2, w + 6) for py in range(2, h - 2))
+        if not inside or not beside or (inside[-1] == 0 and beside[-1] == 0):
+            # Nothing but black: a covered or minimised window, so unknown.
+            return None
+        return inside[len(inside) // 2] - beside[len(beside) // 2] >= DISTANCE_FILL_MIN
+
+    def _followDistance(self, controller, obj):
+        """After a click on a room distance button: says "checked" once the plug-in has drawn it
+        as the chosen one. True for a distance button."""
+        native = (_prop(obj.UIAElement, PROP_NAME, "") or "").strip()
+        if native not in DISTANCE_NAMES or self.viewOf(controller) != "cab":
+            return False
+        rect = engine._objRect(obj)
+        if not rect:
+            return True
+
+        def poll(remaining):
+            chosen = self.distanceChosen(controller, rect)
+            if chosen:
+                log.info("neuralAccess: room distance: %s at %r is chosen" % (native, rect))
+                ui.message("checked")
+                return
+            if remaining > 0:
+                callLater(DISTANCE_POLL_MS, poll, remaining - 1)
+            else:
+                log.info("neuralAccess: room distance: %s at %r never read as chosen (%r)" % (native, rect, chosen))
+
+        # The click goes down 150 ms from now and the pointer is put back at 360.
+        callLater(DISTANCE_POLL_MS * 3, poll, DISTANCE_POLLS)
+        return True
+
+    def isMicArrow(self, obj, controller):
+        """True for one of the Cab view's four microphone arrows."""
+        label = getattr(obj, "ampLabel", "") or ""
+        return label.endswith(MIC_ARROW_SUFFIXES) and self.viewOf(controller) == "cab"
+
+    def micListBelow(self, controller, arrowRect):
+        """The element of the microphone list an arrow steps: the list whose width takes in the
+        arrow's middle and whose top is closest below the arrow. None when there is none."""
+        middle = arrowRect[0] + arrowRect[2] / 2.0
+        best = None
+        for element in controller.findElements(controlType=CT_COMBOBOX):
+            rect = _prop(element, PROP_BOUNDING_RECT)
+            if not rect or len(rect) < 4 or rect[2] <= 0 or rect[3] <= 0:
+                continue
+            if not rect[0] <= middle <= rect[0] + rect[2] or rect[1] < arrowRect[1]:
+                continue
+            if best is None or rect[1] < best[0]:
+                best = (rect[1], element)
+        return best[1] if best else None
+
+    def _followMicArrow(self, controller, obj):
+        """After a click on a microphone arrow: says the microphone it chose. True for an arrow.
+
+        Until 0.13.6 the arrow said nothing, and the way to hear the new microphone was Tab to
+        the list and Shift+Tab back (Hadi, 2026-11-16: "your idea makes sense. to have it
+        announce the selection as we scroll through"). Focus stays on the arrow. A later press
+        takes over from this one, so pressing on quickly says only where it ends up."""
+        if not self.isMicArrow(obj, controller):
+            return False
+        arrowRect = engine._objRect(obj)
+        element = self.micListBelow(controller, arrowRect) if arrowRect else None
+        if element is None:
+            log.info("neuralAccess: microphone arrow: no list found below %r" % (arrowRect,))
+            return True
+        # The click goes down 150 ms from now, so this is still the microphone before it.
+        before = (_prop(element, PROP_NAME, "") or "").strip()
+        serial = getattr(controller, "_petrucciMicSerial", 0) + 1
+        controller._petrucciMicSerial = serial
+        found = {"element": element}
+
+        def read():
+            name = (_prop(found["element"], PROP_NAME, "") or "").strip()
+            if not name:
+                # The plug-in may have put a new list in place of the old one.
+                fresh = self.micListBelow(controller, arrowRect)
+                if fresh is not None:
+                    found["element"] = fresh
+                    name = (_prop(fresh, PROP_NAME, "") or "").strip()
+            return name
+
+        def poll(remaining, seen):
+            if getattr(controller, "_petrucciMicSerial", serial) != serial:
+                return
+            now = read()
+            if now and now != before and now == seen:
+                # Focus gone on to the list (or anywhere else) says the name, or does not need it.
+                stayed = engine._sameRect(engine._objRect(api.getFocusObject()), arrowRect)
+                log.info("neuralAccess: microphone arrow: %r, was %r%s" % (
+                    now, before, "" if stayed else "; focus has moved on, not said"))
+                if stayed:
+                    ui.message(now)
+                return
+            if remaining > 0:
+                callLater(MIC_ARROW_POLL_MS, poll, remaining - 1, now)
+            else:
+                log.info("neuralAccess: microphone arrow: the list still reads %r, was %r" % (now, before))
+
+        callLater(MIC_ARROW_POLL_MS * 2, poll, MIC_ARROW_POLLS, None)
+        return True
+
     def afterClick(self, controller, obj):
         if self._isPresetButton(obj, controller):
             # Enter on the preset button opens the list, as the P key does.
@@ -4713,6 +5065,10 @@ class ArchetypeXProfile(engine.AmpProfile):
         if obj.ampHelpText == TUNER_HELP:
             self._forgetTuner(controller)
             self._followTunerWindow(controller, self.tunerPanel(controller) is not None)
+            return
+        if not native and self._followMicArrow(controller, obj):
+            return
+        if self._followDistance(controller, obj):
             return
         child = self._tunerChild(obj, controller)
         if child is None:

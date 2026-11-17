@@ -226,6 +226,12 @@ DECORATIVE_NAMES = frozenset((
     "Gate switch", "Doubler switch", "Wah switch", "Left room switch", "Right room switch",
     # A view's own background, where it is a stop: see VIEW_BACKGROUND_NAME.
     "View background",
+    # The delay's two time readouts above its time knobs while it is free: read-only number
+    # displays of the same two times (layout timeLNumberEditor and timeRNumberEditor, readonly).
+    # Tab reached them through 0.13.7's ring, and Hadi (2026-11-16): "it seems like we have an
+    # extra pare of display sliders that shouldn't be there?" Passed over at his word; the knobs
+    # say the same times and are what changes them.
+    "Delay time left display", "Delay time right display",
 ))
 
 # The amp power switch's state probe, per live amplifier: each amp has its own panel art, and

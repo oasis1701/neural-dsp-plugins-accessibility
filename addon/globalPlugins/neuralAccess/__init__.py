@@ -200,6 +200,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         try:
             controller = self._controllerFor(obj)
             if controller is not None:
+                # NVDA has caught up with any move along the ring the add-on made itself (see
+                # RING_PENDING_S in archetypex).
+                controller._ringPending = None
                 with engine.Timed("working out a focused control's name and value"):
                     if controller.skipDecorative(obj):
                         return

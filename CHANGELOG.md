@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.10 (2026-11-16)
+
+- Enter on a microphone's previous or next arrow in the Cab section now says the microphone it chose. Focus stays on the arrow, so you no longer need to Tab to the list to hear it. Press it several times quickly and only the last microphone is said.
+- Quick Tab and Shift+Tab could go the wrong way, most often from a microphone list to that microphone's switch. Inside a section and along the top and bottom bars they now always go where they should.
+- In the Petrucci X's Cab section, Tab now reaches each microphone's room distance buttons, Close, Mid and Far, which the plug-in leaves out of its own Tab order. Each says whether it is the chosen distance, and Enter on one chooses it.
+- In the Petrucci X's Post FX section, with the delay's sync on free, Tab passes over the two time readouts above the delay's time knobs. They only show the times, which the knobs say too.
+
 ## 0.13.5 (2026-11-15)
 
 Previous preset and Next preset are now in the Tab order, so M or the Applications key can open their right-click menu and assign them to a MIDI control. The plug-ins give neither arrow a Tab stop of its own.
