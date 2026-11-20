@@ -458,6 +458,12 @@ CAB_MINI_BAND = (0.40, 0.47)
 # (2026-11-16).
 CAB_SIDED_NAMES = {"CLOSE": "room distance close", "MID": "room distance mid", "FAR": "room distance far",
                    "ROOM": "room", "PHASE": "phase"}
+# The Cab view's side panels of the Nolly X and the Fortin Nameless Suite X say ROOM SEND where
+# the Petrucci's say ROOM, and have none of its CLOSE, MID and FAR: taken over, "MID" would put
+# Left in front of the miniature amp row's Mid knob. Such a profile takes these three tables.
+ROOM_SEND_CAPTION_STATE_KEYS = dict(CAPTION_STATE_KEYS, **{"ROOM SEND": "room send"})
+ROOM_SEND_SIDED_CAPTIONS = frozenset(("room send", "phase"))
+ROOM_SEND_CAB_SIDED_NAMES = {"ROOM SEND": "room send", "PHASE": "phase"}
 
 # The Petrucci's room distance buttons: CLOSE, MID and FAR under each Cab side's room level knob
 # (layout cabPanelView, action selectDistance on mouse down; the host parameters "Room L
@@ -871,6 +877,18 @@ class ArchetypeXProfile(engine.AmpProfile):
             controller, self.CAB_MINI_BAND, self.CAB_MINI_PANEL_MAX_WIDTH))
 
     def _panelIn(self, controller, band, maxWidthFraction):
+        parts = self._panelParts(controller, band, maxWidthFraction)
+        if parts is None:
+            return None
+        knobs, buttons = parts
+        power = buttons[-1] if buttons[-1][0] > knobs[-1][0] else None
+        switches = buttons[:-1] if power is not None else list(buttons)
+        return self._panel(knobs, switches, power)
+
+    def _panelParts(self, controller, band, maxWidthFraction):
+        """(knobs, buttons) of an amp panel in a band of the editor's height, each a list of (x,
+        rectangle, element) left to right, no wider than maxWidthFraction of the editor; None
+        when either list is empty. The buttons are those with no name."""
         geometry = controller.clientGeometry()
         if not geometry:
             return None
@@ -886,8 +904,11 @@ class ArchetypeXProfile(engine.AmpProfile):
                    and not any(self._rectMatches(entry[1], rect) for rect in tunerRects)]
         if not knobs or not buttons:
             return None
-        power = buttons[-1] if buttons[-1][0] > knobs[-1][0] else None
-        switches = buttons[:-1] if power is not None else list(buttons)
+        return knobs, buttons
+
+    def _panel(self, knobs, switches, power):
+        """The panel's description for ampPanel and cabMiniPanel, or None when _ampIndexOf does
+        not know the panel."""
         index = self._ampIndexOf(knobs, switches)
         if index is None:
             return None
@@ -1924,6 +1945,10 @@ class ArchetypeXProfile(engine.AmpProfile):
         ui.message(message)
 
     def switchAmpModel(self, controller, direction):
+        if len(self.ampModelNames) == 1:
+            # The Fortin Nameless Suite X has one amplifier and no selectors to click.
+            ui.message("This plug-in has one amplifier.")
+            return
         selectors = self.selectorElements(controller)
         if len(selectors) != len(self.ampModelNames):
             ui.message("Cannot locate the amplifier selectors.")

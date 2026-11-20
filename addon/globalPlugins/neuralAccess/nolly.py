@@ -35,9 +35,10 @@ from logHandler import log
 
 from . import core as engine
 from .archetypex import (
-    ArchetypeXProfile, AMP_SWITCH_HUSH_S, CAPTION_STATE_KEYS, KNOB_UNITS, TOP_BAR_BACKGROUND_NAME,
+    ArchetypeXProfile, AMP_SWITCH_HUSH_S, KNOB_UNITS, TOP_BAR_BACKGROUND_NAME,
     VALUE_BOX_SUFFIX,
-    NOTE_VALUE_NAMES, QUICK_HUSH_S, QUICK_RETURN_MS, SECTION_CLICK_GUARD_S, SECTION_KEYS_UP_MS,
+    NOTE_VALUE_NAMES, QUICK_HUSH_S, QUICK_RETURN_MS, ROOM_SEND_CAB_SIDED_NAMES,
+    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, SECTION_CLICK_GUARD_S, SECTION_KEYS_UP_MS,
     SECTION_KEYS_UP_POLLS, SELECTOR_Y, TUNER_HELP,
 )
 from .core import CT_BUTTON, CT_SLIDER, CT_TEXT, PROP_BOUNDING_RECT, PROP_NAME, PROP_RANGE_MAX, _prop
@@ -526,12 +527,10 @@ class NollyProfile(ArchetypeXProfile):
     MINI_POWER_STATE_KEYS = MINI_POWER_STATE_KEYS
     decorativeNames = DECORATIVE_NAMES
 
-    # The Cab view's side panels say ROOM SEND where the Petrucci's say ROOM, and have none of
-    # its CLOSE, MID and FAR: taken over, "MID" would put Left in front of the miniature amp
-    # row's Mid knob.
-    CAPTION_STATE_KEYS = dict(CAPTION_STATE_KEYS, **{"ROOM SEND": "room send"})
-    SIDED_CAPTIONS = frozenset(("room send", "phase"))
-    CAB_SIDED_NAMES = {"ROOM SEND": "room send", "PHASE": "phase"}
+    # The Cab view's side panels say ROOM SEND (see ROOM_SEND_CAPTION_STATE_KEYS).
+    CAPTION_STATE_KEYS = ROOM_SEND_CAPTION_STATE_KEYS
+    SIDED_CAPTIONS = ROOM_SEND_SIDED_CAPTIONS
+    CAB_SIDED_NAMES = ROOM_SEND_CAB_SIDED_NAMES
 
     # The Cab view's miniature amp row is bigger than the Petrucci's: knobs of 34 to 39 pixels
     # with their tops at 342 to 353 of 782, a power switch of 40 and a Bright switch of 26 to 28.
