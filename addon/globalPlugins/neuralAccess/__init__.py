@@ -35,11 +35,13 @@ from . import mesa
 from . import nolly
 from . import petrucci
 from . import popups
+from . import soldano
 
 engine.registerProfile(mesa.PROFILE)
 engine.registerProfile(petrucci.PROFILE)
 engine.registerProfile(nolly.PROFILE)
 engine.registerProfile(fortin.PROFILE)
+engine.registerProfile(soldano.PROFILE)
 
 APP_MODULE = "neuraldsp"
 
