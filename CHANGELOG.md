@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.1 (2026-11-20)
+
+- First support for the Fortin Nameless Suite X. Its controls have names, its switches say their positions on the amp's Original skin, and the number keys, the brackets and Tab work in its five sections.
+
 ## 0.13.10 (2026-11-16)
 
 - Enter on a microphone's previous or next arrow in the Cab section now says the microphone it chose. Focus stays on the arrow, so you no longer need to Tab to the list to hear it. Press it several times quickly and only the last microphone is said.

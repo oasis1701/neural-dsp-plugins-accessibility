@@ -28,8 +28,9 @@
 import controlTypes
 
 from .archetypex import (
-    ArchetypeXProfile, KNOB_UNITS, NOTE_VALUE_NAMES, ROOM_SEND_CAB_SIDED_NAMES,
-    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, TUNER_HELP,
+    ArchetypeXProfile, CAB_PANEL_SWITCH_PROBES, KNOB_UNITS, NOTE_VALUE_NAMES, ROOM_SEND_CAB_SIDED_NAMES,
+    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES,
+    TUNER_HELP,
 )
 from .core import PROP_BOUNDING_RECT, PROP_NAME, PROP_RANGE_MAX, _prop
 
@@ -197,6 +198,10 @@ DECORATIVE_NAMES = frozenset((
     "Gate switch", "Doubler switch", "Left room switch", "Right room switch",
     "View background", "Pedal background", "Microphone panel background", "Microphone picture",
     "Amp headlight", "Amp input cable", "Amp skin",
+    # The delay's time display while it is free: a read-only number display of the time the knob
+    # under it sets (layout delayTimeMsEditor, readonly). Hadi heard it in 0.14.0 (2026-11-20)
+    # as a second slider of the same time, as he did the Petrucci X's two in 0.13.8.
+    "Delay time display",
 ))
 
 # The EQ's two captions in the plug-in's Tab ring, hpfLabel and lpfLabel, the only textLabels its
@@ -233,6 +238,69 @@ VIEW_POINTER_KNOBS = {
     "prefx": frozenset(("Zuul threshold", "Hexdrive drive", "Hexdrive tone", "Hexdrive level", "Grind")),
     "postfx": frozenset(("Delay mix", "Delay feedback", "Delay tone", "Reverb mix", "Reverb decay", "Reverb tone")),
 }
+
+# ---- reading switch positions off the screen, on the Original skin ----
+#
+# No switch of the Fortin says its state in the tree. The top bar's and the Cab view's side
+# panels' are drawn as the Nolly X draws them and are read the same way (TOP_BAR_SWITCH_PROBES,
+# TOP_BAR_TIP_PROBES and CAB_PANEL_SWITCH_PROBES in archetypex.py). The rest are pictures, two per
+# switch, and are read at two spots each: the first word is said when the first spot is the
+# brighter one by 20 grey levels or more, and nothing is said otherwise. The spots are fractions
+# of the switch's own rectangle, with a box of 5 pixels at this size. tools\probe\
+# Find-XSwitchSpots.py found them (probe-results\fortin-switch-spots.txt): it rebuilds each
+# switch on its panel in both states from the plug-in's own pictures and takes the pair of spots
+# with the widest margin over four ways of scaling and a pixel's shift, quoted below as "worst
+# case". The run of 2026-11-20 showed each switch in one state, and in that state every spot
+# below reads the screen as the picture it matches; the other state rests on the pictures.
+# Which picture is which state is the skin's (normalImage for off, downImage for on).
+#
+# Two read nothing: the Cab view's miniature power and standby switches, 24 pixels, whose
+# pictures no pair of spots tells apart (worst case -4.0 and -3.7), and the pull gain button,
+# whose picture is the same in both states (its state shows only on the MVC knob, which no
+# reading tells either; notes\fortin-nameless.md). These pictures are the Original skin's. The
+# Blackout skin's amp pictures differ, and these spots are used on them too until it has its own
+# (plan Task 12). On the Blackout pictures rebuilt offline they read true or nothing: the power
+# and standby switches "amp on" when on and nothing when off, Amp input true, and the miniature's
+# input nothing. The pedals', the EQ's and the delay's pictures are the same in every skin.
+POWER_STATE_KEYS = {"Nameless": "Nameless amp power switch"}
+# Filed so that the miniature never borrows the full-size reading; nothing is filed under it.
+MINI_POWER_STATE_KEYS = {"Nameless": "Mini Nameless amp power switch"}
+
+FORTIN_TIP_PROBES = dict(TOP_BAR_TIP_PROBES, **{
+    # The amp's POWER and STANDBY switches, one picture each, up for off and down for on. Both
+    # are the plug-in's Active Amp Section, so both say whether the amp is on. Worst case 27.4
+    # and 28.3; on the screen (on) 116.2 against 60.0 and 116.4 against 47.7. Darkened to 0.56,
+    # as a section switched off is, off may be under the 20 and say nothing.
+    "Nameless amp power switch": ((0.4168, 0.2293), (0.3751, 0.7293), 0.1043, ("amp on", "amp off")),
+    "Standby switch": ((0.4168, 0.2293), (0.4376, 0.7501), 0.1043, ("amp on", "amp off")),
+    # The input, HIGH I or LOW I, read off the cable picture (CableHigh or CableLow) behind the
+    # invisible button that switches it, at the same places of the editor: 790,547 and 790,534
+    # on the Amp view, and 651,381 and 654,375 on the Cab view's miniature, below its button.
+    # Worst case 98.0 and 43.8; on the screen (high) 132.8 against 24.2 and 138.6 against 56.6.
+    "Amp input": ((0.5635, 0.9115), (0.5635, 0.7469), 0.0665, ("high", "low")),
+    "Mini Amp input": ((0.4287, 1.0279), (0.5001, 0.8612), 0.1280, ("high", "low")),
+    # The EQ's POWER switch. Worst case 73.6; on the screen (on) 151.3 against 19.8.
+    "EQ power": ((0.4484, 0.1380), (0.4829, 0.2760), 0.0863, ("on", "off")),
+    # The delay's PING PONG toggle, leaning right for on. Worst case 25.4. The plug-in prints the
+    # caption above it and two dots below, which the pictures lack; on the screen (on) the spots
+    # read 154.3 against 95.0, and 34.6 apart at the worst pixel's shift.
+    "Delay ping pong": ((0.5801, 0.3201), (0.3001, 0.3401), 0.1001, ("on", "off")),
+    # Each stomp, from its pedal's lamp: the stomps spring back, so their own pictures say
+    # nothing. The first spot is on the lamp's middle, the second at its edge or on the pedal
+    # beside it, which is why the fractions of the stomp's rectangle are negative or over 1.
+    # The Zuul's lamp is green while its gate is open and red while it is closed, two pictures
+    # at one place; the red lamp's spots read both (worst case 53.1 red, 91.1 green, 48.4 off).
+    # The others: worst case 67.8 (Hexdrive, red), 80.6 (Grind, green), 64.8 (delay, small
+    # green) and 71.2 (reverb, green). On the screen the Zuul's and the Grind's were lit.
+    "Zuul pedal": ((0.3379, -1.0269), (0.1623, -0.7702), 0.0676, ("on", "off")),
+    "Hexdrive pedal": ((0.3650, -1.2837), (0.2298, -1.1891), 0.0676, ("on", "off")),
+    "Grind pedal": ((0.3515, -0.9594), (0.2433, -0.6891), 0.0676, ("on", "off")),
+    "Delay pedal": ((1.2974, 0.5406), (1.4460, 0.3515), 0.0676, ("on", "off")),
+    "Reverb pedal": ((0.3379, -1.4188), (0.7433, -1.3783), 0.0676, ("on", "off")),
+})
+FORTIN_SWITCH_PROBES = dict(TOP_BAR_SWITCH_PROBES, **CAB_PANEL_SWITCH_PROBES)
+# The tuner window's mute button is the framework's own, as on the Petrucci X.
+FORTIN_SWITCH_PROBES["Mute while tuning"] = ArchetypeXProfile.switchProbes["Mute while tuning"]
 
 
 class FortinProfile(ArchetypeXProfile):
@@ -288,6 +356,17 @@ class FortinProfile(ArchetypeXProfile):
     CAPTION_STATE_KEYS = ROOM_SEND_CAPTION_STATE_KEYS
     SIDED_CAPTIONS = ROOM_SEND_SIDED_CAPTIONS
     CAB_SIDED_NAMES = ROOM_SEND_CAB_SIDED_NAMES
+
+    # See FORTIN_TIP_PROBES and FORTIN_SWITCH_PROBES above. The Cab view's miniature has the
+    # amp's switches under the same names, and is read under "Mini <name>" (the power switch
+    # under MINI_POWER_STATE_KEYS): its switches are 24 and 36 pixels high (0.031 and 0.046 of
+    # the editor), the Amp view's 48 and 79 (0.061 and 0.101).
+    POWER_STATE_KEYS = POWER_STATE_KEYS
+    MINI_POWER_STATE_KEYS = MINI_POWER_STATE_KEYS
+    FULL_SIZE_STATE_NAMES = frozenset(("Amp power switch", "Standby switch", "Amp input"))
+    MINI_SWITCH_MAX_HEIGHT = 0.054
+    switchProbes = FORTIN_SWITCH_PROBES
+    tipProbes = FORTIN_TIP_PROBES
 
     # ---------- telling the views and the amplifier apart ----------
 

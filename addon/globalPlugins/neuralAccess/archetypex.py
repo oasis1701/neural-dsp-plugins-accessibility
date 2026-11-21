@@ -465,6 +465,65 @@ ROOM_SEND_CAPTION_STATE_KEYS = dict(CAPTION_STATE_KEYS, **{"ROOM SEND": "room se
 ROOM_SEND_SIDED_CAPTIONS = frozenset(("room send", "phase"))
 ROOM_SEND_CAB_SIDED_NAMES = {"ROOM SEND": "room send", "PHASE": "phase"}
 
+# Switch readings the Nolly X and the Fortin Nameless Suite X share. Both draw the top bar's GATE
+# and DOUBLER with their little rockers, its input mode switch, and the Cab view's side panels
+# (each microphone's on/off button, ROOM SEND with its rocker, PHASE) the same way at the same
+# places. Measured on the Nolly's run of 2026-11-11 and held against the Fortin's of 2026-11-20
+# (tools\dev\Check-NollyNames.py, tools\dev\Check-FortinNames.py). The Petrucci X draws them
+# otherwise and keeps its own (petrucci.py). A profile takes these tables into its own.
+#
+# The little rockers are read at one spot against the brightest point of the control
+# (core.PROBE_OF_PEAK). Off, a rocker is an empty outline with a white knob at the left; on, it
+# is filled white with a black knob at the right (GATE on and DOUBLER off in the Nolly's run).
+# So no two spots change places between the states, which is what the Petrucci's reading relies
+# on. The middle of the rocker, between the two places the knob can be, is empty (26) or filled
+# (231), and it is held against half of the brightest point of the control itself - the
+# outline, the filling or the caption's letters, 221 to 255 - so that the reading holds on a
+# dimmed panel: the Nolly's right-hand ROOM SEND was drawn at 124 where the left one is 221, its
+# microphone being off.
+#
+# Offsets and boxes are fractions of the editor: a box 2 wide and 4 high, 9 pixels into a 20 by
+# 12 rocker and 4 down. A caption that is itself the switch (GATE, DOUBLER, ROOM SEND) is read at
+# the same place of its rocker, which starts 38, 58 and 72 pixels into it.
+_ROCKER_BOX = (0.00196, 0.00512)
+
+
+def _rocker(x, y, words):
+    return (x / 1024.0 + 0.00001, y / 782.0 + 0.00001, 0.5, words, _ROCKER_BOX, engine.PROBE_OF_PEAK)
+
+
+TOP_BAR_SWITCH_PROBES = {
+    "Gate switch": _rocker(9, 4, ("gate off", "gate on")),
+    "Doubler switch": _rocker(9, 4, ("doubler off", "doubler on")),
+    "Gate": _rocker(38 + 9, 5 + 4, ("off", "on")),
+    "Doubler": _rocker(58 + 9, 5 + 4, ("off", "on")),
+}
+TOP_BAR_TIP_PROBES = {
+    # The input mode switch, from the two captions beside it and not from itself: the plug-in
+    # prints the chosen one in white and the other in grey (Mono white, with the mean of a
+    # 6 by 12 box on its first letter 79 against 44 on Stereo's, in the Nolly's run). What the
+    # switch itself looks like on Stereo has not been seen. The spots are right of the switch.
+    "Input mode switch": ((1.3637, 0.6042), (1.3637, 0.0834), 0.25, ("mono", "stereo")),
+}
+CAB_PANEL_SWITCH_PROBES = {
+    "Left room switch": _rocker(9, 4, ("room send off", "room send on")),
+    "Right room switch": _rocker(9, 4, ("room send off", "room send on")),
+    "Left room send": _rocker(72 + 9, 5 + 4, ("off", "on")),
+    "Right room send": _rocker(72 + 9, 5 + 4, ("off", "on")),
+    # A microphone's on/off button. Its background is lit while the microphone is bypassed and
+    # dark while it is on, as on the Petrucci X (the style is the plug-in's cabsimBypassSwitch).
+    # On, the background reads 55 under a symbol of 245; off, the whole button is one grey, 99
+    # on the Nolly's dimmed panel. So the background is held against the brightest point.
+    "Left microphone switch": (0.01367, 0.03325, 0.6, ("on", "off"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
+    "Right microphone switch": (0.01367, 0.03325, 0.6, ("on", "off"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
+    # PHASE draws a dot at the top left corner of its symbol while inverted (the plug-in's
+    # selectedPhaseIcon.svg, a circle of radius 2 at 2,2 of a 16 pixel symbol), where the
+    # Petrucci X's probe already looks. Both read 27, normal, in the Nolly's run; inverted has
+    # not been seen on either plug-in.
+    "Left phase": (0.05176, 0.00639, 0.5, ("normal", "inverted"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
+    "Right phase": (0.05176, 0.00639, 0.5, ("normal", "inverted"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
+}
+
 # The Petrucci's room distance buttons: CLOSE, MID and FAR under each Cab side's room level knob
 # (layout cabPanelView, action selectDistance on mouse down; the host parameters "Room L
 # Distance" and "Room R Distance", 0 Close, 1 Mid, 2 Far, default Close). The plug-in's own Tab

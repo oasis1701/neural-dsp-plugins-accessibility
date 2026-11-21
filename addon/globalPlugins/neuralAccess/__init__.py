@@ -30,6 +30,7 @@ from logHandler import log
 
 from . import capture
 from . import core as engine
+from . import fortin
 from . import mesa
 from . import nolly
 from . import petrucci
@@ -38,6 +39,7 @@ from . import popups
 engine.registerProfile(mesa.PROFILE)
 engine.registerProfile(petrucci.PROFILE)
 engine.registerProfile(nolly.PROFILE)
+engine.registerProfile(fortin.PROFILE)
 
 APP_MODULE = "neuraldsp"
 

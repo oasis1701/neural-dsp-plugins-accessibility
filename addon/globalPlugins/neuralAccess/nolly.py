@@ -35,8 +35,8 @@ from logHandler import log
 
 from . import core as engine
 from .archetypex import (
-    ArchetypeXProfile, AMP_SWITCH_HUSH_S, KNOB_UNITS, TOP_BAR_BACKGROUND_NAME,
-    VALUE_BOX_SUFFIX,
+    ArchetypeXProfile, AMP_SWITCH_HUSH_S, CAB_PANEL_SWITCH_PROBES, KNOB_UNITS, TOP_BAR_BACKGROUND_NAME,
+    TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES, VALUE_BOX_SUFFIX,
     NOTE_VALUE_NAMES, QUICK_HUSH_S, QUICK_RETURN_MS, ROOM_SEND_CAB_SIDED_NAMES,
     ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, SECTION_CLICK_GUARD_S, SECTION_KEYS_UP_MS,
     SECTION_KEYS_UP_POLLS, SELECTOR_Y, TUNER_HELP,
@@ -393,11 +393,8 @@ NOLLY_TIP_PROBES = {
     "Overdrive 2 pedal": ((0.4755, -1.2458), (0.5739, -1.1802), 0.0657, ("on", "off")),
     "Delay 2 pedal": ((1.0821, 0.5739), (1.1804, 0.6395), 0.0657, ("on", "off")),
     "Reverb pedal": ((0.4755, -1.2294), (0.5739, -1.1802), 0.0657, ("on", "off")),
-    # The input mode switch, from the two captions beside it and not from itself: the plug-in
-    # prints the chosen one in white and the other in grey (Mono white, with the mean of a
-    # 6 by 12 box on its first letter 79 against 44 on Stereo's, in the run). What the switch
-    # itself looks like on Stereo has not been seen. The spots are right of the switch.
-    "Input mode switch": ((1.3637, 0.6042), (1.3637, 0.0834), 0.25, ("mono", "stereo")),
+    # The input mode switch, from the two captions beside it (TOP_BAR_TIP_PROBES).
+    "Input mode switch": TOP_BAR_TIP_PROBES["Input mode switch"],
     # The EQ's voicing switch, 18 by 10. Unlike the other little rockers it is drawn in the
     # same colours in both positions (the skin's eqTypeSwitch gives every background, border
     # and thumb colour the same value normal and selected): a white pill whose black knob
@@ -412,48 +409,13 @@ NOLLY_TIP_PROBES = {
 }
 
 # 2. One spot against the brightest point of the control (core.PROBE_OF_PEAK), for the little
-#    rockers. The Nolly X draws them differently from the Petrucci X: off, an empty outline
-#    with a white knob at the left; on, filled white with a black knob at the right (GATE on
-#    and DOUBLER off in the run). So no two spots change places between the states, which is
-#    what the Petrucci's reading relies on. (The EQ's voicing switch is not drawn this way; see
-#    NOLLY_TIP_PROBES.) The
-#    middle of the rocker, between the two places the knob can be, is empty (26) or filled
-#    (231), and it is held against half of the brightest point of the control itself - the
-#    outline, the filling or the caption's letters, 221 to 255 - so that the reading holds on
-#    a dimmed panel: the right-hand ROOM SEND in the run was drawn at 124 where the left one
-#    is 221, its microphone being off.
-#
-#    Offsets and boxes are fractions of the editor: a box 2 wide and 4 high, 9 pixels into a
-#    20 by 12 rocker and 4 down. A caption that is itself the switch (GATE, DOUBLER, ROOM SEND)
-#    is read at the same place of its rocker, which starts 38, 58 and 72 pixels into it.
-_ROCKER_BOX = (0.00196, 0.00512)
-
-
-def _rocker(x, y, words):
-    return (x / 1024.0 + 0.00001, y / 782.0 + 0.00001, 0.5, words, _ROCKER_BOX, engine.PROBE_OF_PEAK)
-
-
-NOLLY_SWITCH_PROBES = {
-    "Gate switch": _rocker(9, 4, ("gate off", "gate on")),
-    "Doubler switch": _rocker(9, 4, ("doubler off", "doubler on")),
-    "Left room switch": _rocker(9, 4, ("room send off", "room send on")),
-    "Right room switch": _rocker(9, 4, ("room send off", "room send on")),
-    "Gate": _rocker(38 + 9, 5 + 4, ("off", "on")),
-    "Doubler": _rocker(58 + 9, 5 + 4, ("off", "on")),
-    "Left room send": _rocker(72 + 9, 5 + 4, ("off", "on")),
-    "Right room send": _rocker(72 + 9, 5 + 4, ("off", "on")),
-    # A microphone's on/off button. Its background is lit while the microphone is bypassed and
-    # dark while it is on, as on the Petrucci X (the style is the plug-in's cabsimBypassSwitch).
-    # On, the background reads 55 under a symbol of 245; off, the whole button is one grey, 99
-    # on the dimmed panel of the run. So the background is held against the brightest point.
-    "Left microphone switch": (0.01367, 0.03325, 0.6, ("on", "off"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
-    "Right microphone switch": (0.01367, 0.03325, 0.6, ("on", "off"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
-    # PHASE draws a dot at the top left corner of its symbol while inverted (the plug-in's
-    # selectedPhaseIcon.svg, a circle of radius 2 at 2,2 of a 16 pixel symbol), where the
-    # Petrucci X's probe already looks. Both read 27, normal, in the run; inverted has not been
-    # seen on this plug-in.
-    "Left phase": (0.05176, 0.00639, 0.5, ("normal", "inverted"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
-    "Right phase": (0.05176, 0.00639, 0.5, ("normal", "inverted"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
+#    rockers of the top bar and the Cab view's side panels, the microphones' on/off buttons and
+#    PHASE. The Nolly X draws them differently from the Petrucci X and as the Fortin Nameless
+#    Suite X does, so the readings are in archetypex.py (TOP_BAR_SWITCH_PROBES and
+#    CAB_PANEL_SWITCH_PROBES), with how they were made. (The EQ's voicing switch is not drawn
+#    this way; see NOLLY_TIP_PROBES.)
+NOLLY_SWITCH_PROBES = dict(TOP_BAR_SWITCH_PROBES, **CAB_PANEL_SWITCH_PROBES)
+NOLLY_SWITCH_PROBES.update({
     # 3. One spot against a fixed grey level, for the Cab view's miniature power switches. They
     #    are 40 pixels, and no pair of spots on them keeps 20 apart in both states at every
     #    scaling. The lit part of the rocker does: 121 to 131 on, 56 to 60 off (on the screen,
@@ -464,7 +426,7 @@ NOLLY_SWITCH_PROBES = {
     "Mini Lead amp power switch": (0.02149, 0.02430, 92, ("amp off", "amp on"), (0.00391, 0.00512)),
     # The tuner window's mute button is the framework's own, as on the Petrucci X.
     "Mute while tuning": ArchetypeXProfile.switchProbes["Mute while tuning"],
-}
+})
 
 # A selector picked out by its picture, when the toggle states do not single one out: its mean
 # brightness must beat the next one's by this factor. Measured on the run's pictures, selected
