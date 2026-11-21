@@ -380,6 +380,14 @@ CORY_TIP_PROBES = {
     "Bright switch": ((0.3930, 0.3215), (0.3930, 0.5001), 0.1787, ("on", "off")),
     "Drive switch": ((0.3930, 0.3215), (0.3930, 0.5001), 0.1787, ("on", "off")),
     "Delay mode": ((0.1945, 0.3057), (0.7779, 0.2223), 0.1390, ("dual", "single")),
+    # The Wash's SHIMMER, a push button: off its cap stands high with a deep shadow below, on it
+    # sits pressed in a dark ring. 4 pixel spots below and above the cap stand 55.9 apart on and
+    # 47.2 off at the plug-in's own size, and lean the wrong way by 1.7 at most over the four ways
+    # of scaling and a pixel's shift (probe-results\corywong-measures\shimmer_pairs.py). The spot
+    # finder's 5 pixel pair stood 14.5 apart on Hadi's screen, and 0.16.0 said no position (his
+    # report, 2026-11-21).
+    "Wash shimmer": ((14 / 34.0 + 0.0001, 24 / 34.0 + 0.0001), (21 / 34.0 + 0.0001, 8 / 34.0 + 0.0001), 4 / 34.0,
+                     ("on", "off")),
     "Postal Service pedal": _lampSpots((130, 410), (8, 9), (10, 1), (103, 499), ("on", "off")),
     "Compressor pedal": _lampSpots((380, 410), (7, 10), (10, 1), (351, 499), ("on", "off"), 10),
     "Tuber pedal": _lampSpots((630, 410), (8, 8), (10, 10), (602, 499), ("on", "off")),
