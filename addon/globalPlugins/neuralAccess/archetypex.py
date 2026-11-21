@@ -4407,8 +4407,14 @@ class ArchetypeXProfile(engine.AmpProfile):
                     ui.message("No menu opened.")
                 return
             if isOpen:
+                # On Enter, focus leaves the item a moment before the menu's window goes, and a
+                # look taken then finds no name. The item chosen is the last one named (Hadi's
+                # log of 0.14.1, 2026-11-20: "the last item in focus was ''" after Enable MIDI
+                # Learn, and nothing was said).
                 try:
-                    last["item"] = api.getFocusObject().name
+                    name = api.getFocusObject().name
+                    if name:
+                        last["item"] = name
                 except Exception:
                     pass
                 if time.time() - started < PRESET_LIST_MAX_S:
