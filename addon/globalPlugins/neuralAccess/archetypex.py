@@ -281,6 +281,14 @@ VALUE_BOX_MAX_S = 300.0
 # the mouse pointer comes to about 225) and is at least this bright (a covered window is black).
 AMP_SELECTOR_MARGIN = 1.08
 AMP_SELECTOR_MIN = 60.0
+# The Nolly X and the Cory Wong X, whose selectors' toggle states are true (LinkedAmpsXProfile).
+# UI Automation's Toggle.ToggleState property: 0 off, 1 on.
+PROP_TOGGLE_STATE = 30086
+# The amp and cab link (the layout's ampCabLinkButton, 24 by 24, left of the selectors). After a
+# click the selector row is looked at this often, this many times, for the change of shape.
+LINK_NAME = "Amp and cab link"
+LINK_POLL_MS = 150
+LINK_POLLS = 12
 # When the amplifier changes the plug-in rebuilds what had focus (the amp panel; the EQ view
 # too) and drops focus on the top bar's background until the add-on has put it somewhere. NVDA
 # began to say "decorative background" each time (Hadi, 2026-11-10; his log has that stop 0.25
@@ -684,6 +692,13 @@ class ArchetypeXProfile(engine.AmpProfile):
     CAB_MINI_KNOB_MAX_WIDTH = 0.03
     CAB_MINI_PANEL_MAX_WIDTH = 0.035
     MINI_SWITCH_MAX_HEIGHT = 0.033
+    # Buttons narrower than this fraction of the editor's width are no part of an amp panel or its
+    # miniature: the Cory Wong X's lamps, which stand right of the power switch's left edge and
+    # would be taken for it. 0 keeps every button.
+    PANEL_BUTTON_MIN_WIDTH = 0.0
+    # True where the section buttons' icons are drawn dark on a light bar (the Cory Wong X), so that
+    # whether a section is on is read the other way round (_darkSectionLook).
+    SECTION_ICONS_DARK = False
     # Each view's own controls: {view: ((centre y, centre x, name), ...)}, centres as fractions
     # of the editor. A control matches when its centre is within 0.02 in y and 0.012 in x. The
     # Amp view's controls are handled structurally instead (the panel changes with the
@@ -982,7 +997,7 @@ class ArchetypeXProfile(engine.AmpProfile):
                  if entry[1][2] / width <= maxWidthFraction
                  and not any(self._rectMatches(entry[1], rect) for rect in tunerRects)]
         buttons = [entry for entry in self._bandElements(controller, CT_BUTTON, band, unnamedOnly=True)
-                   if entry[1][2] / width <= maxWidthFraction
+                   if self.PANEL_BUTTON_MIN_WIDTH <= entry[1][2] / width <= maxWidthFraction
                    and not any(self._rectMatches(entry[1], rect) for rect in tunerRects)]
         if not knobs or not buttons:
             return None
@@ -1558,11 +1573,13 @@ class ArchetypeXProfile(engine.AmpProfile):
         # Hertz in words as well, so that a filter knob's own figure ("25 hertz", see
         # _filterValue) and its display's are the same text: the plug-in's report of a change
         # is kept quiet only when it is exactly what the arrow key has just said.
+        # " %" is the Cory Wong X's wah, whose POSITION and SENSITIVITY displays print "31 %".
         return (text.replace(" dB", " decibels")
                     .replace(" st", " semitones")
                     .replace(" ms", " milliseconds")
                     .replace(" kHz", " kilohertz")
-                    .replace(" Hz", " hertz"))
+                    .replace(" Hz", " hertz")
+                    .replace(" %", " percent"))
 
     def formatValue(self, label, raw, minimum, maximum, unitText=None):
         # A named position is said in its own words whatever display text stands nearby: with
@@ -1785,6 +1802,8 @@ class ArchetypeXProfile(engine.AmpProfile):
                 others.append(tuple(rect[:4]))
         if own is None:
             return None
+        if self.SECTION_ICONS_DARK:
+            return self._darkSectionLook(controller, own, others)
         white = 0.0
         for rect in [own] + others:
             peak = controller.peakGrey(*rect)
@@ -1802,6 +1821,28 @@ class ArchetypeXProfile(engine.AmpProfile):
         if peak is None or mean is None or white - mean < SECTION_MIN_RANGE:
             return None
         return (peak - mean) / (white - mean)
+
+    def _darkSectionLook(self, controller, own, others):
+        """_sectionLook's measure turned round, for icons drawn dark on a light bar (the Cory Wong
+        X): (the icon's mean - its darkest point) / (that mean - the row's darkest point). The row's
+        darkest is an icon at full strength or the dot under the view's own button, about 56 on
+        the run of 2026-11-21, where a section switched off has its icon faded (the Wah's read
+        0.27, the other five 1.00)."""
+        darkest = None
+        for rect in [own] + others:
+            dark = controller.darkGrey(*rect)
+            if dark is not None and (darkest is None or dark < darkest):
+                darkest = dark
+        if darkest is None:
+            return None
+        left, top, width, height = own
+        xF, yF, wF, hF = SECTION_ICON_BOX
+        box = (left + width * xF, top + height * yF, width * wF, height * hF)
+        dark = controller.darkGrey(*box)
+        mean = controller.meanGrey(*box)
+        if dark is None or mean is None or mean - darkest < SECTION_MIN_RANGE:
+            return None
+        return (mean - dark) / (mean - darkest)
 
     @staticmethod
     def _sectionIsOn(look):
@@ -5378,6 +5419,354 @@ class ArchetypeXProfile(engine.AmpProfile):
         if processID:
             callLater(1200, note)
         return "Load custom IR"
+
+
+class LinkedAmpsXProfile(ArchetypeXProfile):
+    """An X plug-in with several amplifiers, a selector for each, and an amp and cab link: the
+    Archetype Nolly X and the Archetype Cory Wong X. What the two have in common was the Nolly's
+    own until the Cory Wong came (2026-11-21): the selectors read by their toggle states, which are
+    true on both; the row of cabinet selectors under the amplifiers' while unlinked; the link
+    button; C for the next cabinet and Control+A for the link; and the names of the backgrounds
+    that are in the tree as controls of their own. Unlinking does not keep the cabinet that was
+    sounding: the cabinet goes to the one last chosen by itself (the Nolly's run unlinked on Lead
+    and Rhythm's cabinet came up; the Cory Wong's on Clean, and Snob's)."""
+
+    # A selector picked out by its picture, when the toggle states do not single one out: its
+    # mean brightness must beat the next one's by this factor. None: the toggle states alone.
+    SELECTOR_MEAN_MARGIN = 1.12
+    # A pedal's background, as fractions of the editor's width and height (see _backgroundName).
+    PEDAL_BACKGROUND_WIDTH = (0.20, 0.50)
+    PEDAL_BACKGROUND_HEIGHT = (0.48, 0.58)
+    # Captions in the plug-in's Tab ring on the EQ view, which Tab passes over.
+    EQ_CAPTIONS = frozenset()
+
+    # ---------- the selectors and the link ----------
+
+    def _selectorRows(self, controller):
+        """(amplifier selectors, cabinet selectors), each left to right. Linked, the plug-in
+        shows four selectors that stand for amplifier and cabinet together, and the second list
+        is empty; unlinked, a row of four amplifiers over a row of four cabinets."""
+        def build():
+            found = super(LinkedAmpsXProfile, self)._selectorElements(controller)
+            if len(found) <= len(self.ampModelNames):
+                return found, []
+            geometry = controller.clientGeometry()
+            slack = geometry[3] * 0.015 if geometry else 10.0
+            top = min(rect[1] for _x, rect, _element in found)
+            amps = [entry for entry in found if entry[1][1] - top < slack]
+            cabs = [entry for entry in found if entry[1][1] - top >= slack]
+            return amps, cabs
+        return controller._positionalSweep("selectorRows", build)
+
+    def _selectorElements(self, controller):
+        return self._selectorRows(controller)[0]
+
+    def cabSelectorElements(self, controller):
+        return self._selectorRows(controller)[1]
+
+    def ampCabLinked(self, controller):
+        """True while the cabinet follows the amplifier, False while they are chosen apart,
+        None when the selectors cannot be found."""
+        amps, cabs = self._selectorRows(controller)
+        if len(amps) != len(self.ampModelNames):
+            return None
+        return not cabs
+
+    def linkElement(self, controller):
+        """(rect, element) of the amp and cab link button, or None."""
+        def build():
+            geometry = controller.clientGeometry()
+            if not geometry:
+                return None
+            left, _top, width, _height = geometry
+            band = (SELECTOR_Y[0], 0.96)
+            for _x, rect, element in self._bandElements(controller, CT_BUTTON, band, unnamedOnly=True):
+                if 0.018 <= rect[2] / width <= 0.028 and (rect[0] - left) / width < 0.45:
+                    return tuple(rect[:4]), element
+            return None
+        return controller._positionalSweep("ampCabLink", build)
+
+    @staticmethod
+    def _rowIndex(entries, obj):
+        """Index of the entry standing where the object stands, or None. Both edges count: an
+        unlinked amplifier selector is three pixels right of the cabinet selector under it."""
+        try:
+            left, top = obj.location.left, obj.location.top
+        except Exception:
+            return None
+        for index, entry in enumerate(entries):
+            if abs(entry[1][0] - left) < 3 and abs(entry[1][1] - top) < 3:
+                return index
+        return None
+
+    def _selectedIn(self, controller, selectors, what):
+        """Which of a row of selectors is the selected one, or None. Their toggle states say
+        where exactly one of them reads On; failing that the pictures do, where one selector
+        is clearly the brightest."""
+        states = [_prop(element, PROP_TOGGLE_STATE) for _x, _rect, element in selectors]
+        on = [index for index, state in enumerate(states) if state == 1]
+        if len(on) == 1:
+            engine.STATE_LOG("neuralAccess: %s selectors' toggle states %r -> %r" % (
+                what, states, self.ampModelNames[on[0]]))
+            return on[0]
+        if self.SELECTOR_MEAN_MARGIN is None:
+            engine.STATE_LOG("neuralAccess: %s selectors' toggle states %r say nothing, and the pictures "
+                             "are not read on this plug-in" % (what, states))
+            return None
+        means = [controller.meanGrey(*rect[:4]) for _x, rect, _element in selectors]
+        if any(mean is None for mean in means):
+            return None
+        order = sorted(range(len(means)), key=lambda index: means[index], reverse=True)
+        clear = means[order[0]] >= means[order[1]] * self.SELECTOR_MEAN_MARGIN
+        engine.STATE_LOG("neuralAccess: %s selectors' toggle states %r say nothing; mean brightness %s -> %r" % (
+            what, states, " / ".join("%.0f" % mean for mean in means),
+            self.ampModelNames[order[0]] if clear else None))
+        return order[0] if clear else None
+
+    def selectedAmpIndex(self, controller):
+        """Which amplifier's selector is the selected one, 0 to 3, or None. Works in every
+        view. Unlinked, the amplifier row's pictures are too alike to judge by, so only the
+        toggle states are asked there."""
+        def build():
+            selectors = self.selectorElements(controller)
+            if len(selectors) != len(self.ampModelNames):
+                return None
+            if self.cabSelectorElements(controller):
+                states = [_prop(element, PROP_TOGGLE_STATE) for _x, _rect, element in selectors]
+                on = [index for index, state in enumerate(states) if state == 1]
+                engine.STATE_LOG("neuralAccess: unlinked amp selectors' toggle states %r" % (states,))
+                return on[0] if len(on) == 1 else None
+            return self._selectedIn(controller, selectors, "amp")
+        return controller._positionalSweep("selectedAmp", build)
+
+    def selectedCabIndex(self, controller):
+        """Which cabinet is sounding, 0 to 3, or None: the amplifier's own while linked, the
+        selected one of the cabinet row while not."""
+        def build():
+            cabs = self.cabSelectorElements(controller)
+            if not cabs:
+                return self.liveAmpIndex(controller)
+            if len(cabs) != len(self.ampModelNames):
+                return None
+            return self._selectedIn(controller, cabs, "cab")
+        return controller._positionalSweep("selectedCab", build)
+
+    def _isLink(self, obj, controller):
+        link = self.linkElement(controller)
+        return link is not None and self._sameControl(obj, link[0])
+
+    def positionalLabel(self, obj, controller):
+        role = obj.ampNativeRole
+        if role in (controlTypes.Role.BUTTON, controlTypes.Role.TOGGLEBUTTON):
+            # The cabinet row and the link first: the shared code knows one row of selectors,
+            # and would take a cabinet selector for the amplifier above it.
+            index = self._rowIndex(self.cabSelectorElements(controller), obj)
+            if index is not None and index < len(self.ampModelNames):
+                return "%s cabinet" % self.ampModelNames[index]
+            if self._isLink(obj, controller):
+                return LINK_NAME
+        elif role == controlTypes.Role.UNKNOWN:
+            name = self._backgroundName(obj, controller)
+            if name:
+                return name
+        return super(LinkedAmpsXProfile, self).positionalLabel(obj, controller)
+
+    def _backgroundName(self, obj, controller):
+        """A name for the backgrounds that are in the tree as controls of their own: a pedal's
+        (PEDAL_BACKGROUND_WIDTH by PEDAL_BACKGROUND_HEIGHT), a microphone panel's (160 by 527)
+        and the two pictures of a microphone in front of its speaker (250 by 250). None of them
+        does anything."""
+        if self._tunerControlName(obj, controller) is not None \
+                or self._midiControlName(obj, controller) is not None:
+            return ""
+        fractions = self._objFractions(obj, controller)
+        if fractions is None:
+            return ""
+        _xF, yF, wF, hF = fractions
+        view = self.viewOf(controller)
+        if view in ("prefx", "postfx") and self.PEDAL_BACKGROUND_WIDTH[0] <= wF <= self.PEDAL_BACKGROUND_WIDTH[1] \
+                and self.PEDAL_BACKGROUND_HEIGHT[0] <= hF <= self.PEDAL_BACKGROUND_HEIGHT[1]:
+            return "Pedal background"
+        if view == "cab":
+            if 0.14 <= wF <= 0.17 and 0.62 <= hF <= 0.72:
+                return "Microphone panel background"
+            if 0.22 <= wF <= 0.27 and 0.28 <= hF <= 0.36 and yF > 0.6:
+                return "Microphone picture"
+        return ""
+
+    def _decorate(self, obj, controller, base):
+        if base == LINK_NAME and self._isLink(obj, controller):
+            linked = self.ampCabLinked(controller)
+            return base if linked is None else "%s, %s" % (base, "linked" if linked else "unlinked")
+        return super(LinkedAmpsXProfile, self)._decorate(obj, controller, base)
+
+    def passedOver(self, obj):
+        """The EQ's captions in the Tab ring (see EQ_CAPTIONS) too."""
+        if getattr(obj, "ampNativeRole", None) == controlTypes.Role.STATICTEXT:
+            element = getattr(obj, "UIAElement", None)
+            if element is not None and (_prop(element, PROP_NAME, "") or "").strip() in self.EQ_CAPTIONS:
+                return True
+        return super(LinkedAmpsXProfile, self).passedOver(obj)
+
+
+    def selectedState(self, obj, controller):
+        """The cabinet selectors are radio buttons too; the link button is not one."""
+        if obj.ampNativeRole in (controlTypes.Role.BUTTON, controlTypes.Role.TOGGLEBUTTON):
+            index = self._rowIndex(self.cabSelectorElements(controller), obj)
+            if index is not None:
+                live = self.selectedCabIndex(controller)
+                return None if live is None else live == index
+            if self._isLink(obj, controller):
+                return None
+        return super(LinkedAmpsXProfile, self).selectedState(obj, controller)
+
+    # ---------- C: the next cabinet ----------
+
+    def switchCabModel(self, controller, direction):
+        """C: selects the next cabinet, going round, and says "Rhythm cabinet". Only while the
+        amp and cab are unlinked; linked, it says how to unlink them."""
+        linked = self.ampCabLinked(controller)
+        if linked is None:
+            ui.message("Cannot locate the selectors.")
+            return True
+        if linked:
+            ui.message("The cabinet follows the amplifier. Control+A unlinks them.")
+            return True
+        cabs = self.cabSelectorElements(controller)
+        if len(cabs) != len(self.ampModelNames):
+            ui.message("Cannot locate the cabinet selectors.")
+            return True
+        controller._lastTab = None
+        clickedAt = time.time()
+        lastTarget, lastTime = getattr(controller, "_cabKeyClick", (None, 0.0))
+        if lastTarget is not None and clickedAt - lastTime < SECTION_CLICK_GUARD_S:
+            # A press straight after another steps on from the cabinet just asked for.
+            base = lastTarget
+        else:
+            base = self.selectedCabIndex(controller)
+            if base is None:
+                log.info("neuralAccess: cab key: the cabinet selectors do not say which is selected")
+                ui.message("Cannot tell which cabinet is selected.")
+                return True
+        target = (base + direction) % len(self.ampModelNames)
+        controller._cabKeyClick = (target, clickedAt)
+        targetName = self.ampModelNames[target]
+        # A key that changes a setting leaves focus where it is: the click hands it to the
+        # selector, so it is sent back and neither change is announced, as for the amp key.
+        home = self._quickHome(controller)
+        quiet = [self.topBarBackgroundRect(controller), cabs[target][1]] + ([home[1]] if home else [])
+        controller.hushFocus([rect for rect in quiet if rect], AMP_SWITCH_HUSH_S)
+        controller.clickElement(cabs[target][2])
+        if home is not None:
+            callLater(QUICK_RETURN_MS, self._returnHome, controller, home[0])
+        log.info("neuralAccess: cab key: %s was selected; clicked the %s cabinet selector; focus %s"
+                 % (self.ampModelNames[base], targetName, "sent back" if home else "left alone"))
+        serial = getattr(controller, "_petrucciSwitchSerial", 0) + 1
+        controller._petrucciSwitchSerial = serial
+
+        def poll(remaining):
+            if getattr(controller, "_petrucciSwitchSerial", serial) != serial:
+                return
+            controller.invalidatePositional()
+            if self.selectedCabIndex(controller) == target:
+                controller.invalidateReadouts()
+                controller.invalidateStates()
+                prefix = "%s cabinet" % targetName
+                focus = engine.focusedElement()
+                focusRect = _prop(focus, PROP_BOUNDING_RECT) if focus is not None else None
+                stayed = home is not None and focusRect and self._rectMatches(tuple(focusRect[:4]), home[1])
+                nowhereBefore = home is None and focus is not None and not controller.isFocusDeadEnd(focus)
+                if stayed or nowhereBefore:
+                    ui.message(prefix)
+                    return
+                # The Cab view may be rebuilt for the new cabinet, and what had focus with it.
+                stop = self._firstTabStop(controller)
+                if stop is None or not self._landOn(controller, stop, prefix):
+                    ui.message(prefix)
+                return
+            if remaining > 0:
+                callLater(200, poll, remaining - 1)
+            else:
+                log.info("neuralAccess: cab key: the %s cabinet never showed as selected" % targetName)
+                ui.message("Could not switch cabinet.")
+
+        callLater(500, poll, 8)
+        return True
+
+    # ---------- Control+A: the amp and cab link ----------
+
+    def _linkWords(self, controller, linked):
+        if linked:
+            return "Amp and cab linked"
+        cab = self.selectedCabIndex(controller)
+        if cab is None:
+            return "Amp and cab unlinked"
+        return "Amp and cab unlinked. %s cabinet" % self.ampModelNames[cab]
+
+    def _followLink(self, controller, before, home=None):
+        """After a click on the link button: says the new state once the selector row shows
+        it. The row changes shape with the link, which is what is watched for."""
+        serial = getattr(controller, "_linkSerial", 0) + 1
+        controller._linkSerial = serial
+
+        def poll(remaining):
+            if getattr(controller, "_linkSerial", serial) != serial:
+                return
+            controller.invalidatePositional()
+            now = self.ampCabLinked(controller)
+            if now is not None and now != before:
+                controller.invalidateStates()
+                log.info("neuralAccess: link key: the amp and cab were %s and are now %s"
+                         % ("linked" if before else "unlinked", "linked" if now else "unlinked"))
+                ui.message(self._linkWords(controller, now))
+                return
+            if remaining > 0:
+                callLater(LINK_POLL_MS, poll, remaining - 1)
+            else:
+                log.info("neuralAccess: link key: the selector row never changed (linked reads %r)" % (now,))
+                ui.message("Could not switch the amp and cab link.")
+
+        callLater(LINK_POLL_MS * 2, poll, LINK_POLLS)
+
+    def ampCabLink(self, controller):
+        """Control+A: links or unlinks the amplifier and the cabinet and says which it is now.
+        Focus stays where it is."""
+        link = self.linkElement(controller)
+        before = self.ampCabLinked(controller)
+        if link is None or before is None:
+            ui.message("Cannot locate the amp and cab link.")
+            return True
+        rect, element = link
+        home = self._quickHome(controller)
+        controller._lastTab = None
+
+        def press(remaining):
+            # The command's own Control key is still down when it starts, and a click made
+            # then is a Control+click. Wait for the keys to come up.
+            if engine.modifiersDown() and remaining > 0:
+                callLater(SECTION_KEYS_UP_MS, press, remaining - 1)
+                return
+            quiet = [rect, self.topBarBackgroundRect(controller)] + ([home[1]] if home else [])
+            controller.hushFocus([entry for entry in quiet if entry], QUICK_HUSH_S)
+            if not controller.clickElement(element):
+                ui.message("Could not press the amp and cab link.")
+                return
+            if home is not None:
+                callLater(QUICK_RETURN_MS, self._returnHome, controller, home[0])
+            self._followLink(controller, before, home)
+
+        press(SECTION_KEYS_UP_POLLS)
+        return True
+
+    def afterClick(self, controller, obj):
+        # Enter on the link button itself: the same report as Control+A gives.
+        if self._isLink(obj, controller):
+            before = self.ampCabLinked(controller)
+            if before is not None:
+                self._followLink(controller, before)
+            return
+        super(LinkedAmpsXProfile, self).afterClick(controller, obj)
+
 
 
 class SingleAmpXProfile(ArchetypeXProfile):

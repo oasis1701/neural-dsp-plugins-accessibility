@@ -165,6 +165,12 @@ COLOUR_MIN_LIGHT = 20
 # under PROBE_PEAK_MIN is a window that is covered or not drawn, and gives no reading.
 PROBE_OF_PEAK = "of peak"
 PROBE_PEAK_MIN = 40.0
+# A switch probe whose threshold is a share of the way from the darkest point of the control's own
+# rectangle to its brightest: the Cory Wong X's little rockers, dark marks on a light ground, whose
+# box catches some outline when the editor is drawn at another size (notes\corywong.md). The two
+# points must stand PROBE_RANGE_MIN apart, or the box is taken for a covered window.
+PROBE_OF_RANGE = "of range"
+PROBE_RANGE_MIN = 40.0
 
 
 def STATE_LOG(message):
@@ -694,7 +700,8 @@ class AmpProfile(object):
     # Pixel calibration for switches whose position the tree does not expose:
     # label -> (dx, dy, threshold, (lowWord, highWord)[, (boxW, boxH)[, PROBE_OF_PEAK]]), offsets
     # and the optional sample box as client fractions. With PROBE_OF_PEAK the threshold is a
-    # share, 0 to 1, of the brightest point of the control's own rectangle.
+    # share, 0 to 1, of the brightest point of the control's own rectangle; with PROBE_OF_RANGE a
+    # share of the way from its darkest point to its brightest.
     switchProbes = {}
     # The self-check: boxes of the editor that look the same whatever it shows, at any size, as
     # ((x, y, w, h, (red, green, blue)), ...), as fractions of the editor's width and height, with
@@ -2049,6 +2056,32 @@ class AmpController(object):
                     peak = grey
         return peak or None
 
+    def darkGrey(self, left, top, width, height):
+        """The grey of the darkest point in a box of the screen, or None if it cannot be seen. For
+        a dark mark on a light ground, as peakGrey is for a light mark on a dark one (the Cory Wong
+        X's section icons). None as for meanGrey, and for a box of nothing but black."""
+        left, top, width, height = int(left), int(top), int(width), int(height)
+        if width <= 0 or height <= 0 or left < -10000 or top < -10000:
+            return None
+        try:
+            bitmap = screenBitmap.ScreenBitmap(width, height)
+            pixels = bitmap.captureImage(left, top, width, height)
+        except Exception:
+            log.debugWarning("neuralAccess: could not sample the screen", exc_info=True)
+            return None
+        dark = None
+        lit = False
+        for y in range(height):
+            scanline = pixels[y]
+            for x in range(width):
+                pixel = scanline[x]
+                if pixel.rgbRed or pixel.rgbGreen or pixel.rgbBlue:
+                    lit = True
+                grey = 0.299 * pixel.rgbRed + 0.587 * pixel.rgbGreen + 0.114 * pixel.rgbBlue
+                if dark is None or grey < dark:
+                    dark = grey
+        return dark if lit else None
+
     def switchPosition(self, label, rect):
         """The word for a switch's current position, or None when it cannot be read."""
         probe = self.profile.switchProbes.get(label)
@@ -2075,16 +2108,25 @@ class AmpController(object):
             dx, dy, threshold, words = probe[:4]
             # A fifth entry overrides the sample box, for lamps smaller than the usual box.
             boxSize = probe[4] if len(probe) > 4 else self.profile.switchProbeSize
+            # The profile may read a switch at another control's place (the Cory Wong X reads EQ
+            # power and its power switches off their lamps); None when that control is not found.
             anchor = self.profile.switchAnchor(self, label, rect)
             boxW = max(1, int(round(boxSize[0] * width)))
             boxH = max(1, int(round(boxSize[1] * height)))
-            grey = self.meanGrey(anchor[0] + dx * width, anchor[1] + dy * height, boxW, boxH)
-            if len(probe) > 5 and probe[5] == PROBE_OF_PEAK:
+            grey = None if anchor is None else self.meanGrey(anchor[0] + dx * width, anchor[1] + dy * height, boxW, boxH)
+            if anchor is None:
+                threshold = None
+            elif len(probe) > 5 and probe[5] == PROBE_OF_PEAK:
                 # The threshold is a share of the brightest point of the control itself, so
                 # the reading holds however the amplifier dims the control: under a window
                 # drawn over the view, or on a panel that is switched off.
                 peak = self.peakGrey(anchor[0], anchor[1], anchor[2], anchor[3])
                 threshold = None if peak is None or peak < PROBE_PEAK_MIN else threshold * peak
+            elif len(probe) > 5 and probe[5] == PROBE_OF_RANGE:
+                peak = self.peakGrey(anchor[0], anchor[1], anchor[2], anchor[3])
+                dark = self.darkGrey(anchor[0], anchor[1], anchor[2], anchor[3])
+                threshold = None if peak is None or dark is None or peak - dark < PROBE_RANGE_MIN \
+                    else dark + threshold * (peak - dark)
             else:
                 threshold = threshold * self.profile.probeDimming(self, label)
             word = None if grey is None or threshold is None \

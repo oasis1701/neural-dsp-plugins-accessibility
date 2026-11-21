@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0 (2026-11-21)
+
+- First support for the Archetype Cory Wong X, for testing. Its controls have the names its panels print, its three amplifiers, the cabinet selectors and the amp and cab link work as on the Nolly X, and the number keys, the brackets and Tab work in its six sections. It is drawn light, so its switch readings are its own.
+
 ## 0.15.3 (2026-11-21)
 
 - First support for the Soldano SLO-100 X. Its controls have the names its panel prints, its switches and pedals say their positions on the amp's default Black look, and the number keys, the brackets and Tab work in its five sections. The amp's knobs say the figure their dial points at, from 0 to 11.

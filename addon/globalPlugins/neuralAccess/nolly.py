@@ -1,9 +1,10 @@
 # neuralAccess - the Archetype Nolly X profile.
 #
 # What is the Nolly X's own: its five sections, the landmark tables of their views, its four
-# amplifiers, the amp and cab link with its two rows of selectors, and the pictures its switches
-# are read from. Everything it has in common with the other X plug-ins is in archetypex.py
-# (ArchetypeXProfile), where the tables below are looked up under the names they carry here.
+# amplifiers, its EQ's voicing, and the pictures its switches are read from. Everything it has in
+# common with the other X plug-ins is in archetypex.py (ArchetypeXProfile), where the tables below
+# are looked up under the names they carry here. The amp and cab link with its two rows of
+# selectors, and C and Control+A, it shares with the Cory Wong X (LinkedAmpsXProfile, there too).
 #
 # Where it comes from, none of it measured by hand:
 #   * the plug-in's own layout, read out of the VST3 on 2026-11-10 (probe-results\nolly-layout);
@@ -26,25 +27,18 @@
 #     the Lead amplifier and the Rhythm cabinet came up selected).
 
 import re
-import time
 
-import controlTypes
-import ui
 from core import callLater
 from logHandler import log
 
-from . import core as engine
+# LINK_NAME is imported for tools\dev\Check-NollyNames.py, which reads it as nolly.LINK_NAME.
 from .archetypex import (
-    ArchetypeXProfile, AMP_SWITCH_HUSH_S, CAB_PANEL_SWITCH_PROBES, KNOB_UNITS, TOP_BAR_BACKGROUND_NAME,
-    TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES, VALUE_BOX_SUFFIX,
-    NOTE_VALUE_NAMES, QUICK_HUSH_S, QUICK_RETURN_MS, ROOM_SEND_CAB_SIDED_NAMES,
-    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, SECTION_CLICK_GUARD_S, SECTION_KEYS_UP_MS,
-    SECTION_KEYS_UP_POLLS, SELECTOR_Y, TUNER_HELP,
+    ArchetypeXProfile, LinkedAmpsXProfile, LINK_NAME, CAB_PANEL_SWITCH_PROBES, KNOB_UNITS,
+    TOP_BAR_BACKGROUND_NAME, TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES, VALUE_BOX_SUFFIX,
+    NOTE_VALUE_NAMES, ROOM_SEND_CAB_SIDED_NAMES, ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS,
+    TUNER_HELP,
 )
 from .core import CT_BUTTON, CT_SLIDER, CT_TEXT, PROP_BOUNDING_RECT, PROP_NAME, PROP_RANGE_MAX, _prop
-
-# UI Automation's Toggle.ToggleState property: 0 off, 1 on.
-PROP_TOGGLE_STATE = 30086
 
 # The five sections in button order, as viewOf names their views.
 VIEW_KEYS = ("prefx", "amp", "cab", "eq", "postfx")
@@ -337,10 +331,6 @@ MINI_POWER_STATE_KEYS = {
 }
 
 
-# The amp and cab link (the layout's ampCabLinkButton, 24 by 24, left of the selectors).
-LINK_NAME = "Amp and cab link"
-LINK_POLL_MS = 150
-LINK_POLLS = 12
 # ---- reading switch positions off the screen ----
 #
 # No switch of the Nolly X says its state in the tree. Three kinds of reading stand in for it.
@@ -428,14 +418,7 @@ NOLLY_SWITCH_PROBES.update({
     "Mute while tuning": ArchetypeXProfile.switchProbes["Mute while tuning"],
 })
 
-# A selector picked out by its picture, when the toggle states do not single one out: its mean
-# brightness must beat the next one's by this factor. Measured on the run's pictures, selected
-# against the brightest of the others: 174 against 96 over a dark view, 217 against 180 over the
-# Cab view's cabinet, and 220 against 112 in the unlinked cabinet row.
-SELECTOR_MEAN_MARGIN = 1.12
-
-
-class NollyProfile(ArchetypeXProfile):
+class NollyProfile(LinkedAmpsXProfile):
     """The Neural DSP Archetype Nolly X, standalone and VST3."""
 
     id = "nolly"
@@ -508,6 +491,15 @@ class NollyProfile(ArchetypeXProfile):
     # See NOLLY_TIP_PROBES and NOLLY_SWITCH_PROBES above. The Petrucci's readings of the
     # rockers and of the input mode switch are not taken over: the Nolly draws them otherwise.
     switchProbes = NOLLY_SWITCH_PROBES
+    # A selector picked out by its picture, when the toggle states do not single one out
+    # (LinkedAmpsXProfile). Measured on the run's pictures, selected against the brightest of
+    # the others: 174 against 96 over a dark view, 217 against 180 over the Cab view's
+    # cabinet, and 220 against 112 in the unlinked cabinet row.
+    SELECTOR_MEAN_MARGIN = 1.12
+    # Its pedals' backgrounds are 258 or 466 wide and 413 high (LinkedAmpsXProfile).
+    PEDAL_BACKGROUND_WIDTH = (0.20, 0.50)
+    PEDAL_BACKGROUND_HEIGHT = (0.48, 0.58)
+    EQ_CAPTIONS = EQ_CAPTIONS
     tipProbes = NOLLY_TIP_PROBES
     # The self-check's boxes (core.AmpProfile.screenReferences), of the kind archetypex.py's
     # TOP_BAR_REFERENCES are, in the Nolly's warmer top bar, chosen by
@@ -559,131 +551,7 @@ class NollyProfile(ArchetypeXProfile):
             return 1 if switches else 2
         return None
 
-    # ---------- the selectors and the link ----------
-
-    def _selectorRows(self, controller):
-        """(amplifier selectors, cabinet selectors), each left to right. Linked, the plug-in
-        shows four selectors that stand for amplifier and cabinet together, and the second list
-        is empty; unlinked, a row of four amplifiers over a row of four cabinets."""
-        def build():
-            found = ArchetypeXProfile._selectorElements(self, controller)
-            if len(found) <= len(self.ampModelNames):
-                return found, []
-            geometry = controller.clientGeometry()
-            slack = geometry[3] * 0.015 if geometry else 10.0
-            top = min(rect[1] for _x, rect, _element in found)
-            amps = [entry for entry in found if entry[1][1] - top < slack]
-            cabs = [entry for entry in found if entry[1][1] - top >= slack]
-            return amps, cabs
-        return controller._positionalSweep("selectorRows", build)
-
-    def _selectorElements(self, controller):
-        return self._selectorRows(controller)[0]
-
-    def cabSelectorElements(self, controller):
-        return self._selectorRows(controller)[1]
-
-    def ampCabLinked(self, controller):
-        """True while the cabinet follows the amplifier, False while they are chosen apart,
-        None when the selectors cannot be found."""
-        amps, cabs = self._selectorRows(controller)
-        if len(amps) != len(self.ampModelNames):
-            return None
-        return not cabs
-
-    def linkElement(self, controller):
-        """(rect, element) of the amp and cab link button, or None."""
-        def build():
-            geometry = controller.clientGeometry()
-            if not geometry:
-                return None
-            left, _top, width, _height = geometry
-            band = (SELECTOR_Y[0], 0.96)
-            for _x, rect, element in self._bandElements(controller, CT_BUTTON, band, unnamedOnly=True):
-                if 0.018 <= rect[2] / width <= 0.028 and (rect[0] - left) / width < 0.45:
-                    return tuple(rect[:4]), element
-            return None
-        return controller._positionalSweep("ampCabLink", build)
-
-    @staticmethod
-    def _rowIndex(entries, obj):
-        """Index of the entry standing where the object stands, or None. Both edges count: an
-        unlinked amplifier selector is three pixels right of the cabinet selector under it."""
-        try:
-            left, top = obj.location.left, obj.location.top
-        except Exception:
-            return None
-        for index, entry in enumerate(entries):
-            if abs(entry[1][0] - left) < 3 and abs(entry[1][1] - top) < 3:
-                return index
-        return None
-
-    def _selectedIn(self, controller, selectors, what):
-        """Which of a row of selectors is the selected one, or None. Their toggle states say
-        where exactly one of them reads On; failing that the pictures do, where one selector
-        is clearly the brightest."""
-        states = [_prop(element, PROP_TOGGLE_STATE) for _x, _rect, element in selectors]
-        on = [index for index, state in enumerate(states) if state == 1]
-        if len(on) == 1:
-            engine.STATE_LOG("neuralAccess: %s selectors' toggle states %r -> %r" % (
-                what, states, self.ampModelNames[on[0]]))
-            return on[0]
-        means = [controller.meanGrey(*rect[:4]) for _x, rect, _element in selectors]
-        if any(mean is None for mean in means):
-            return None
-        order = sorted(range(len(means)), key=lambda index: means[index], reverse=True)
-        clear = means[order[0]] >= means[order[1]] * SELECTOR_MEAN_MARGIN
-        engine.STATE_LOG("neuralAccess: %s selectors' toggle states %r say nothing; mean brightness %s -> %r" % (
-            what, states, " / ".join("%.0f" % mean for mean in means),
-            self.ampModelNames[order[0]] if clear else None))
-        return order[0] if clear else None
-
-    def selectedAmpIndex(self, controller):
-        """Which amplifier's selector is the selected one, 0 to 3, or None. Works in every
-        view. Unlinked, the amplifier row's pictures are too alike to judge by, so only the
-        toggle states are asked there."""
-        def build():
-            selectors = self.selectorElements(controller)
-            if len(selectors) != len(self.ampModelNames):
-                return None
-            if self.cabSelectorElements(controller):
-                states = [_prop(element, PROP_TOGGLE_STATE) for _x, _rect, element in selectors]
-                on = [index for index, state in enumerate(states) if state == 1]
-                engine.STATE_LOG("neuralAccess: unlinked amp selectors' toggle states %r" % (states,))
-                return on[0] if len(on) == 1 else None
-            return self._selectedIn(controller, selectors, "amp")
-        return controller._positionalSweep("selectedAmp", build)
-
-    def selectedCabIndex(self, controller):
-        """Which cabinet is sounding, 0 to 3, or None: the amplifier's own while linked, the
-        selected one of the cabinet row while not."""
-        def build():
-            cabs = self.cabSelectorElements(controller)
-            if not cabs:
-                return self.liveAmpIndex(controller)
-            if len(cabs) != len(self.ampModelNames):
-                return None
-            return self._selectedIn(controller, cabs, "cab")
-        return controller._positionalSweep("selectedCab", build)
-
-    def _isLink(self, obj, controller):
-        link = self.linkElement(controller)
-        return link is not None and self._sameControl(obj, link[0])
-
     def positionalLabel(self, obj, controller):
-        role = obj.ampNativeRole
-        if role in (controlTypes.Role.BUTTON, controlTypes.Role.TOGGLEBUTTON):
-            # The cabinet row and the link first: the shared code knows one row of selectors,
-            # and would take a cabinet selector for the amplifier above it.
-            index = self._rowIndex(self.cabSelectorElements(controller), obj)
-            if index is not None and index < len(self.ampModelNames):
-                return "%s cabinet" % self.ampModelNames[index]
-            if self._isLink(obj, controller):
-                return LINK_NAME
-        elif role == controlTypes.Role.UNKNOWN:
-            name = self._backgroundName(obj, controller)
-            if name:
-                return name
         return self._bandNamed(super(NollyProfile, self).positionalLabel(obj, controller), controller)
 
     def _bandNamed(self, name, controller):
@@ -718,41 +586,6 @@ class NollyProfile(ArchetypeXProfile):
             found.sort()
             return tuple(word for _x, word in found) if len(found) == len(EQ_BANDS) else None
         return controller._positionalSweep("eqBandWords", build)
-
-    def _backgroundName(self, obj, controller):
-        """A name for the backgrounds that are in the tree as controls of their own: a pedal's
-        (258 or 466 wide, 413 high), a microphone panel's (160 by 527) and the two pictures of
-        a microphone in front of its speaker (250 by 250). None of them does anything."""
-        if self._tunerControlName(obj, controller) is not None \
-                or self._midiControlName(obj, controller) is not None:
-            return ""
-        fractions = self._objFractions(obj, controller)
-        if fractions is None:
-            return ""
-        _xF, yF, wF, hF = fractions
-        view = self.viewOf(controller)
-        if view in ("prefx", "postfx") and 0.20 <= wF <= 0.50 and 0.48 <= hF <= 0.58:
-            return "Pedal background"
-        if view == "cab":
-            if 0.14 <= wF <= 0.17 and 0.62 <= hF <= 0.72:
-                return "Microphone panel background"
-            if 0.22 <= wF <= 0.27 and 0.28 <= hF <= 0.36 and yF > 0.6:
-                return "Microphone picture"
-        return ""
-
-    def _decorate(self, obj, controller, base):
-        if base == LINK_NAME and self._isLink(obj, controller):
-            linked = self.ampCabLinked(controller)
-            return base if linked is None else "%s, %s" % (base, "linked" if linked else "unlinked")
-        return super(NollyProfile, self)._decorate(obj, controller, base)
-
-    def passedOver(self, obj):
-        """The EQ captions in the Tab ring (see EQ_CAPTIONS) too."""
-        if getattr(obj, "ampNativeRole", None) == controlTypes.Role.STATICTEXT:
-            element = getattr(obj, "UIAElement", None)
-            if element is not None and (_prop(element, PROP_NAME, "") or "").strip() in EQ_CAPTIONS:
-                return True
-        return super(NollyProfile, self).passedOver(obj)
 
     def viewTabPatch(self, obj, controller, backwards):
         """The EQ's jumps, asked after the switch-first order, which takes the EQ's two ends
@@ -825,17 +658,6 @@ class NollyProfile(ArchetypeXProfile):
             return ends
         return controller._positionalSweep("eqJumpEnds", build)
 
-    def selectedState(self, obj, controller):
-        """The cabinet selectors are radio buttons too; the link button is not one."""
-        if obj.ampNativeRole in (controlTypes.Role.BUTTON, controlTypes.Role.TOGGLEBUTTON):
-            index = self._rowIndex(self.cabSelectorElements(controller), obj)
-            if index is not None:
-                live = self.selectedCabIndex(controller)
-                return None if live is None else live == index
-            if self._isLink(obj, controller):
-                return None
-        return super(NollyProfile, self).selectedState(obj, controller)
-
     def stateLabel(self, obj):
         """The Cab view's miniature Bright switch is 26 pixels on the Clean amplifier and 28 on
         the Crunch, so its probe is filed per amplifier."""
@@ -854,156 +676,12 @@ class NollyProfile(ArchetypeXProfile):
             return "%.1f seconds" % (raw / 1000.0)
         return super(NollyProfile, self).formatValue(label, raw, minimum, maximum, unitText)
 
-    # ---------- C: the next cabinet ----------
-
-    def switchCabModel(self, controller, direction):
-        """C: selects the next cabinet, going round, and says "Rhythm cabinet". Only while the
-        amp and cab are unlinked; linked, it says how to unlink them."""
-        linked = self.ampCabLinked(controller)
-        if linked is None:
-            ui.message("Cannot locate the selectors.")
-            return True
-        if linked:
-            ui.message("The cabinet follows the amplifier. Control+A unlinks them.")
-            return True
-        cabs = self.cabSelectorElements(controller)
-        if len(cabs) != len(self.ampModelNames):
-            ui.message("Cannot locate the cabinet selectors.")
-            return True
-        controller._lastTab = None
-        clickedAt = time.time()
-        lastTarget, lastTime = getattr(controller, "_nollyCabClick", (None, 0.0))
-        if lastTarget is not None and clickedAt - lastTime < SECTION_CLICK_GUARD_S:
-            # A press straight after another steps on from the cabinet just asked for.
-            base = lastTarget
-        else:
-            base = self.selectedCabIndex(controller)
-            if base is None:
-                log.info("neuralAccess: cab key: the cabinet selectors do not say which is selected")
-                ui.message("Cannot tell which cabinet is selected.")
-                return True
-        target = (base + direction) % len(self.ampModelNames)
-        controller._nollyCabClick = (target, clickedAt)
-        targetName = self.ampModelNames[target]
-        # A key that changes a setting leaves focus where it is: the click hands it to the
-        # selector, so it is sent back and neither change is announced, as for the amp key.
-        home = self._quickHome(controller)
-        quiet = [self.topBarBackgroundRect(controller), cabs[target][1]] + ([home[1]] if home else [])
-        controller.hushFocus([rect for rect in quiet if rect], AMP_SWITCH_HUSH_S)
-        controller.clickElement(cabs[target][2])
-        if home is not None:
-            callLater(QUICK_RETURN_MS, self._returnHome, controller, home[0])
-        log.info("neuralAccess: cab key: %s was selected; clicked the %s cabinet selector; focus %s"
-                 % (self.ampModelNames[base], targetName, "sent back" if home else "left alone"))
-        serial = getattr(controller, "_petrucciSwitchSerial", 0) + 1
-        controller._petrucciSwitchSerial = serial
-
-        def poll(remaining):
-            if getattr(controller, "_petrucciSwitchSerial", serial) != serial:
-                return
-            controller.invalidatePositional()
-            if self.selectedCabIndex(controller) == target:
-                controller.invalidateReadouts()
-                controller.invalidateStates()
-                prefix = "%s cabinet" % targetName
-                focus = engine.focusedElement()
-                focusRect = _prop(focus, PROP_BOUNDING_RECT) if focus is not None else None
-                stayed = home is not None and focusRect and self._rectMatches(tuple(focusRect[:4]), home[1])
-                nowhereBefore = home is None and focus is not None and not controller.isFocusDeadEnd(focus)
-                if stayed or nowhereBefore:
-                    ui.message(prefix)
-                    return
-                # The Cab view may be rebuilt for the new cabinet, and what had focus with it.
-                stop = self._firstTabStop(controller)
-                if stop is None or not self._landOn(controller, stop, prefix):
-                    ui.message(prefix)
-                return
-            if remaining > 0:
-                callLater(200, poll, remaining - 1)
-            else:
-                log.info("neuralAccess: cab key: the %s cabinet never showed as selected" % targetName)
-                ui.message("Could not switch cabinet.")
-
-        callLater(500, poll, 8)
-        return True
-
-    # ---------- Control+A: the amp and cab link ----------
-
-    def _linkWords(self, controller, linked):
-        if linked:
-            return "Amp and cab linked"
-        cab = self.selectedCabIndex(controller)
-        if cab is None:
-            return "Amp and cab unlinked"
-        return "Amp and cab unlinked. %s cabinet" % self.ampModelNames[cab]
-
-    def _followLink(self, controller, before, home=None):
-        """After a click on the link button: says the new state once the selector row shows
-        it. The row changes shape with the link, which is what is watched for."""
-        serial = getattr(controller, "_nollyLinkSerial", 0) + 1
-        controller._nollyLinkSerial = serial
-
-        def poll(remaining):
-            if getattr(controller, "_nollyLinkSerial", serial) != serial:
-                return
-            controller.invalidatePositional()
-            now = self.ampCabLinked(controller)
-            if now is not None and now != before:
-                controller.invalidateStates()
-                log.info("neuralAccess: link key: the amp and cab were %s and are now %s"
-                         % ("linked" if before else "unlinked", "linked" if now else "unlinked"))
-                ui.message(self._linkWords(controller, now))
-                return
-            if remaining > 0:
-                callLater(LINK_POLL_MS, poll, remaining - 1)
-            else:
-                log.info("neuralAccess: link key: the selector row never changed (linked reads %r)" % (now,))
-                ui.message("Could not switch the amp and cab link.")
-
-        callLater(LINK_POLL_MS * 2, poll, LINK_POLLS)
-
-    def ampCabLink(self, controller):
-        """Control+A: links or unlinks the amplifier and the cabinet and says which it is now.
-        Focus stays where it is."""
-        link = self.linkElement(controller)
-        before = self.ampCabLinked(controller)
-        if link is None or before is None:
-            ui.message("Cannot locate the amp and cab link.")
-            return True
-        rect, element = link
-        home = self._quickHome(controller)
-        controller._lastTab = None
-
-        def press(remaining):
-            # The command's own Control key is still down when it starts, and a click made
-            # then is a Control+click. Wait for the keys to come up.
-            if engine.modifiersDown() and remaining > 0:
-                callLater(SECTION_KEYS_UP_MS, press, remaining - 1)
-                return
-            quiet = [rect, self.topBarBackgroundRect(controller)] + ([home[1]] if home else [])
-            controller.hushFocus([entry for entry in quiet if entry], QUICK_HUSH_S)
-            if not controller.clickElement(element):
-                ui.message("Could not press the amp and cab link.")
-                return
-            if home is not None:
-                callLater(QUICK_RETURN_MS, self._returnHome, controller, home[0])
-            self._followLink(controller, before, home)
-
-        press(SECTION_KEYS_UP_POLLS)
-        return True
-
     def afterClick(self, controller, obj):
         # Enter on EQ voicing: the band captions change with it, so the band names read from
         # them are looked for afresh, now and once the plug-in has redrawn.
         if (getattr(obj, "ampLabel", "") or "") == "EQ voicing":
             controller.forgetPositional("eqBandWords")
             callLater(VOICING_REDRAW_MS, controller.forgetPositional, "eqBandWords")
-            return
-        # Enter on the link button itself: the same report as Control+A gives.
-        if self._isLink(obj, controller):
-            before = self.ampCabLinked(controller)
-            if before is not None:
-                self._followLink(controller, before)
             return
         super(NollyProfile, self).afterClick(controller, obj)
 
