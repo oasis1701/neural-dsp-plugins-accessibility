@@ -4,7 +4,7 @@
 
 - First support for the Soldano SLO-100 X. Its controls have the names its panel prints, its switches and pedals say their positions on the amp's default Black look, and the number keys, the brackets and Tab work in its five sections. The amp's knobs say the figure their dial points at, from 0 to 11.
 - In the Soldano's Amp section, the controls the chosen channel turns off say "inactive" after their name, and a switch says it after its position. On the OVERDRIVE channel these are Bright, Mode and the PREAMP and MASTER knobs marked NORMAL. On the NORMAL channel they are the PREAMP and MASTER knobs marked OVERDRIVE.
-- Before it reads a switch's position off the screen, the add-on now checks that the screen shows the plug-in as expected. If it does not, for example with HDR on or another window over the plug-in, switches say their names without a position, so that no position is said wrongly. This covers the Nolly X, the Fortin Nameless Suite X and the Soldano SLO-100 X. The Petrucci X is not covered yet.
+- Before it reads a switch's position off the screen, the add-on now checks that the screen shows the plug-in as expected. If it does not, for example with HDR on or another window over the plug-in, switches say their names without a position. This covers the Nolly X, the Fortin Nameless Suite X and the Soldano SLO-100 X. The Petrucci X is not covered yet. Switch positions are checked at the plug-ins' Medium size and larger. At Small, a few switches may say the wrong position.
 
 ## 0.14.2 (2026-11-20)
 

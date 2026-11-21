@@ -1934,8 +1934,11 @@ class AmpController(object):
         switch reading was measured: each of the profile's screenReferences reads within
         SCREEN_REFERENCE_TOLERANCE of its own colour, or of that colour under the modal mask while
         the tuner or MIDI window is open. False otherwise, and then no switch says a position,
-        since on a screen that looks otherwise (another size, HDR, a tint, a window over the
-        editor) a reading could say the wrong one. True for a profile with no references."""
+        since on a screen that looks otherwise (HDR, a tint, a window over the editor) a reading
+        could say the wrong one. True for a profile with no references. It does not look at the
+        editor's size: the references hold at every size from 0.5 to 2.0, and resized pictures
+        give a few wrong readings at the plug-in's Small size (0.715) and below (the review of
+        2026-11-21). The guide says positions are checked at Medium and larger."""
         references = self.profile.screenReferences
         if not references:
             return True
