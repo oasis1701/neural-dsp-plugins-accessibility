@@ -3,7 +3,8 @@
 # What is the Fortin's own: the landmark tables of its five sections (the Nolly X's five), its
 # one amplifier, whose panel has its power switch at the left with a lamp beside it, and the
 # names its manual gives. Everything it has in common with the other X plug-ins is in
-# archetypex.py (ArchetypeXProfile).
+# archetypex.py (ArchetypeXProfile), and what it has in common with the other one-amplifier plug-in,
+# the Soldano SLO-100 X, is in SingleAmpXProfile there.
 #
 # Where it comes from, none of it measured by hand:
 #   * the plug-in's own layout, read out of the VST3 (probe-results\fortin-layout), from which
@@ -25,14 +26,12 @@
 #   * the plug-in goes through Post Effects' reverb before its delay, the reverb pedal standing
 #     higher; Tab here goes delay first, as the bracket keys do.
 
-import controlTypes
-
 from .archetypex import (
     ArchetypeXProfile, CAB_PANEL_SWITCH_PROBES, KNOB_UNITS, NOTE_VALUE_NAMES, ROOM_SEND_CAB_SIDED_NAMES,
-    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES,
-    TUNER_HELP,
+    ROOM_SEND_CAPTION_STATE_KEYS, ROOM_SEND_SIDED_CAPTIONS, SingleAmpXProfile, TOP_BAR_REFERENCES,
+    TOP_BAR_SWITCH_PROBES, TOP_BAR_TIP_PROBES, TUNER_HELP,
 )
-from .core import PROP_BOUNDING_RECT, PROP_NAME, PROP_RANGE_MAX, _prop
+from .core import PROP_BOUNDING_RECT, PROP_RANGE_MAX, _prop
 
 # The five sections in button order, as viewOf names their views.
 VIEW_KEYS = ("prefx", "amp", "cab", "eq", "postfx")
@@ -303,7 +302,7 @@ FORTIN_SWITCH_PROBES = dict(TOP_BAR_SWITCH_PROBES, **CAB_PANEL_SWITCH_PROBES)
 FORTIN_SWITCH_PROBES["Mute while tuning"] = ArchetypeXProfile.switchProbes["Mute while tuning"]
 
 
-class FortinProfile(ArchetypeXProfile):
+class FortinProfile(SingleAmpXProfile):
     """The Neural DSP Fortin Nameless Suite X, standalone and VST3."""
 
     id = "fortin"
@@ -352,6 +351,12 @@ class FortinProfile(ArchetypeXProfile):
     AMP_SWITCH_TABLES = (AMP_SWITCHES,)
     decorativeNames = DECORATIVE_NAMES
 
+    # The power switch is the panel's left-most button once the headlight is left out; the EQ's
+    # captions in the Tab ring are passed over (see SingleAmpXProfile).
+    PANEL_LEFT_OUT = HEADLIGHTS
+    POWER_SWITCH_AT_LEFT = True
+    EQ_CAPTIONS = EQ_CAPTIONS
+
     # The Cab view's side panels are the Nolly's: ROOM SEND and PHASE on each side.
     CAPTION_STATE_KEYS = ROOM_SEND_CAPTION_STATE_KEYS
     SIDED_CAPTIONS = ROOM_SEND_SIDED_CAPTIONS
@@ -367,6 +372,8 @@ class FortinProfile(ArchetypeXProfile):
     MINI_SWITCH_MAX_HEIGHT = 0.054
     switchProbes = FORTIN_SWITCH_PROBES
     tipProbes = FORTIN_TIP_PROBES
+    # The self-check's boxes, which the Soldano shares (archetypex.TOP_BAR_REFERENCES).
+    screenReferences = TOP_BAR_REFERENCES
 
     # ---------- telling the views and the amplifier apart ----------
 
@@ -395,75 +402,6 @@ class FortinProfile(ArchetypeXProfile):
         if postfx:
             return "postfx"
         return "prefx" if pedalKnob else "amp"
-
-    def _panelIn(self, controller, band, maxWidthFraction):
-        """The amp's panel, or the Cab view's miniature of it. The headlight, left of the power
-        switch, is neither a knob nor a switch (see HEADLIGHTS); the power switch is the
-        left-most button after it (POWER, then STANDBY)."""
-        parts = self._panelParts(controller, band, maxWidthFraction)
-        if parts is None:
-            return None
-        knobs, buttons = (self._withoutHeadlight(controller, entries) for entries in parts)
-        if not knobs or not buttons:
-            return None
-        power = buttons[0]
-        return self._panel([entry for entry in knobs if entry[0] > power[0]], buttons[1:], power)
-
-    def _withoutHeadlight(self, controller, entries):
-        """The (x, rectangle, element) entries but any standing at the headlight's place."""
-        kept = []
-        for entry in entries:
-            fractions = self._fractions(controller, entry[1])
-            if fractions is not None:
-                xF, yF, wF, hF = fractions
-                if any(abs(yF + hF / 2.0 - cy) <= 0.02 and abs(xF + wF / 2.0 - cx) <= 0.012 for cy, cx in HEADLIGHTS):
-                    continue
-            kept.append(entry)
-        return kept
-
-    def _ampIndexOf(self, knobs, switches):
-        """The one amplifier, for a panel with its seven knobs; None for anything else, which is
-        how a half-built tree is turned away."""
-        return 0 if len(knobs) == len(AMP_KNOBS) else None
-
-    # ---------- naming ----------
-
-    def positionalLabel(self, obj, controller):
-        if obj.ampNativeRole == controlTypes.Role.UNKNOWN:
-            name = self._backgroundName(obj, controller)
-            if name:
-                return name
-        return super(FortinProfile, self).positionalLabel(obj, controller)
-
-    def _backgroundName(self, obj, controller):
-        """A name for the backgrounds that are in the tree as controls of their own: a pedal's
-        (217 by 430, the delay's 440 by 372, the reverb's 236 by 453), a microphone panel's (160
-        by 527) and the two pictures of each microphone in front of its speaker (250 by 250).
-        None of them does anything. As the Nolly's, but for the delay pedal's height."""
-        if self._tunerControlName(obj, controller) is not None \
-                or self._midiControlName(obj, controller) is not None:
-            return ""
-        fractions = self._objFractions(obj, controller)
-        if fractions is None:
-            return ""
-        _xF, yF, wF, hF = fractions
-        view = self.viewOf(controller)
-        if view in ("prefx", "postfx") and 0.20 <= wF <= 0.50 and 0.45 <= hF <= 0.60:
-            return "Pedal background"
-        if view == "cab":
-            if 0.14 <= wF <= 0.17 and 0.62 <= hF <= 0.72:
-                return "Microphone panel background"
-            if 0.22 <= wF <= 0.27 and 0.28 <= hF <= 0.36 and yF > 0.6:
-                return "Microphone picture"
-        return ""
-
-    def passedOver(self, obj):
-        """The EQ's two captions in the Tab ring (see EQ_CAPTIONS) too."""
-        if getattr(obj, "ampNativeRole", None) == controlTypes.Role.STATICTEXT:
-            element = getattr(obj, "UIAElement", None)
-            if element is not None and (_prop(element, PROP_NAME, "") or "").strip() in EQ_CAPTIONS:
-                return True
-        return super(FortinProfile, self).passedOver(obj)
 
 
 PROFILE = FortinProfile()

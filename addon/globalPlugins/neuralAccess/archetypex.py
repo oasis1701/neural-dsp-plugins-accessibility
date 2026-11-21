@@ -492,6 +492,21 @@ def _rocker(x, y, words):
     return (x / 1024.0 + 0.00001, y / 782.0 + 0.00001, 0.5, words, _ROCKER_BOX, engine.PROBE_OF_PEAK)
 
 
+# The self-check's boxes (core.AmpProfile.screenReferences) for the top bar the Fortin Nameless
+# Suite X and the Soldano SLO-100 X share, drawing and palette both: two boxes of its flat
+# background, at opposite corners, and the INPUT MODE and OUTPUT captions taken whole, which keep
+# their share of ink at any size. Chosen by tools\probe\Find-ScreenReferences.py from the two
+# plug-ins' driven runs of 2026-11-20 (10 pictures, every section), where the boxes read alike
+# within 0.4 and the captions within 3.5, the editor drawn at 0.75 to 1.5 times its size included.
+# They lie above y 130, clear of the MIDI mappings window, and the tuner window starts lower still. The Nolly X's top bar is the same
+# drawing a few levels warmer and has its own (nolly.py).
+TOP_BAR_REFERENCES = (
+    (4 / 1024.0, 124 / 782.0, 6 / 1024.0, 6 / 782.0, (21.9, 21.9, 21.9)),
+    (1014 / 1024.0, 4 / 782.0, 6 / 1024.0, 6 / 782.0, (21.9, 21.9, 21.9)),
+    (345 / 1024.0, 84 / 782.0, 80 / 1024.0, 14 / 782.0, (66.3, 66.3, 66.3)),
+    (909 / 1024.0, 84 / 782.0, 53 / 1024.0, 14 / 782.0, (61.9, 61.9, 61.9)),
+)
+
 TOP_BAR_SWITCH_PROBES = {
     "Gate switch": _rocker(9, 4, ("gate off", "gate on")),
     "Doubler switch": _rocker(9, 4, ("doubler off", "doubler on")),
@@ -684,6 +699,9 @@ class ArchetypeXProfile(engine.AmpProfile):
     # Views whose Tab order goes through the modules in VIEW_MODULES order, the bracket keys'
     # order, instead of the plug-in's.
     TAB_IN_MODULE_ORDER = frozenset()
+    # Modules (by their VIEW_MODULES name) whose own controls Tab takes left to right, then top to
+    # bottom, instead of in the plug-in's order; the module's switch still comes first.
+    TAB_LEFT_TO_RIGHT_MODULES = frozenset()
     # The knobs that say where their pointer points, {view: names}, and those among them whose
     # pointer does not move evenly with the value, {name: skew}.
     VIEW_POINTER_KNOBS = {}
@@ -710,6 +728,11 @@ class ArchetypeXProfile(engine.AmpProfile):
     }
     tipProbes = {}
     decorativeNames = frozenset(("Gate switch", "Doubler switch", "View background"))
+
+    def modalShowing(self, controller):
+        """True while the tuner or the MIDI mappings window is open, each drawn over a mask that
+        darkens the whole editor (core.MODAL_MASK)."""
+        return bool(self._tunerChildren(controller)) or self.midiState(controller) is not None
 
     def stateLabel(self, obj):
         helpText = obj.ampHelpText
@@ -2284,6 +2307,8 @@ class ArchetypeXProfile(engine.AmpProfile):
         modules = {}
         for name in names:
             members = [index for index in native if moduleOf[index] == name]
+            if name in self.TAB_LEFT_TO_RIGHT_MODULES:
+                members.sort(key=lambda index: (items[index][2][0], items[index][2][1]))
             switch = switches.get(name)
             if switch is not None:
                 members.remove(switch)
@@ -5353,3 +5378,103 @@ class ArchetypeXProfile(engine.AmpProfile):
         if processID:
             callLater(1200, note)
         return "Load custom IR"
+
+
+class SingleAmpXProfile(ArchetypeXProfile):
+    """An X plug-in with one amplifier and no selectors: the Fortin Nameless Suite X and the
+    Soldano SLO-100 X. What the two have in common was the Fortin's own until the Soldano came
+    (2026-11-20): leaving the lamps out of the amp panel before its power switch is found, telling
+    the amplifier by its knob count alone, and naming the backgrounds that are in the tree as
+    controls of their own. A plug-in sets the places to leave out, the side its power switch is
+    on, and the captions in its EQ's Tab ring."""
+
+    # (centre y, centre x) as fractions of the editor: whatever knob or button stands within 0.02
+    # in y and 0.012 in x of one is left out of the amp panel and the Cab view's miniature of it,
+    # before the power switch is found. Lamps go here, and switches named by their places.
+    PANEL_LEFT_OUT = ()
+    # True: the power switch is the left-most button left, and only the knobs right of it are the
+    # panel's (the Fortin). False: the right-most, when it stands right of the last knob, as
+    # ArchetypeXProfile takes it (the Soldano).
+    POWER_SWITCH_AT_LEFT = False
+    # Captions in the plug-in's Tab ring on the EQ view, which Tab passes over.
+    EQ_CAPTIONS = frozenset()
+
+    def _panelParts(self, controller, band, maxWidthFraction):
+        """As ArchetypeXProfile's, less whatever stands at PANEL_LEFT_OUT, with the buttons in
+        order of their left edges and then their tops (two switches may share a left edge)."""
+        parts = super(SingleAmpXProfile, self)._panelParts(controller, band, maxWidthFraction)
+        if parts is None:
+            return None
+        knobs, buttons = (self._leftOut(controller, entries) for entries in parts)
+        if not knobs or not buttons:
+            return None
+        buttons.sort(key=lambda entry: (entry[0], entry[1][1]))
+        return knobs, buttons
+
+    def _panelIn(self, controller, band, maxWidthFraction):
+        if not self.POWER_SWITCH_AT_LEFT:
+            return super(SingleAmpXProfile, self)._panelIn(controller, band, maxWidthFraction)
+        parts = self._panelParts(controller, band, maxWidthFraction)
+        if parts is None:
+            return None
+        knobs, buttons = parts
+        power = buttons[0]
+        return self._panel([entry for entry in knobs if entry[0] > power[0]], buttons[1:], power)
+
+    def _leftOut(self, controller, entries):
+        """The (x, rectangle, element) entries but any standing at a place of PANEL_LEFT_OUT."""
+        kept = []
+        for entry in entries:
+            fractions = self._fractions(controller, entry[1])
+            if fractions is not None:
+                xF, yF, wF, hF = fractions
+                if any(abs(yF + hF / 2.0 - cy) <= 0.02 and abs(xF + wF / 2.0 - cx) <= 0.012
+                       for cy, cx in self.PANEL_LEFT_OUT):
+                    continue
+            kept.append(entry)
+        return kept
+
+    def _ampIndexOf(self, knobs, switches):
+        """The one amplifier, for a panel with all its knobs; None for anything else, which is
+        how a half-built tree is turned away."""
+        return 0 if len(knobs) == len(self.AMP_KNOB_TABLES[0]) else None
+
+    # ---------- naming ----------
+
+    def positionalLabel(self, obj, controller):
+        if obj.ampNativeRole == controlTypes.Role.UNKNOWN:
+            name = self._backgroundName(obj, controller)
+            if name:
+                return name
+        return super(SingleAmpXProfile, self).positionalLabel(obj, controller)
+
+    def _backgroundName(self, obj, controller):
+        """A name for the backgrounds that are in the tree as controls of their own: a pedal's
+        (the Fortin's 217 by 430, its delay's 440 by 372, its reverb's 236 by 453; the Soldano's
+        253 to 451 by 406 to 414), a microphone panel's (160 by 527) and the two pictures of each
+        microphone in front of its speaker (250 by 250). None of them does anything. As the
+        Nolly's, but for the Fortin delay pedal's height."""
+        if self._tunerControlName(obj, controller) is not None \
+                or self._midiControlName(obj, controller) is not None:
+            return ""
+        fractions = self._objFractions(obj, controller)
+        if fractions is None:
+            return ""
+        _xF, yF, wF, hF = fractions
+        view = self.viewOf(controller)
+        if view in ("prefx", "postfx") and 0.20 <= wF <= 0.50 and 0.45 <= hF <= 0.60:
+            return "Pedal background"
+        if view == "cab":
+            if 0.14 <= wF <= 0.17 and 0.62 <= hF <= 0.72:
+                return "Microphone panel background"
+            if 0.22 <= wF <= 0.27 and 0.28 <= hF <= 0.36 and yF > 0.6:
+                return "Microphone picture"
+        return ""
+
+    def passedOver(self, obj):
+        """The EQ's captions in the Tab ring (see EQ_CAPTIONS) too."""
+        if getattr(obj, "ampNativeRole", None) == controlTypes.Role.STATICTEXT:
+            element = getattr(obj, "UIAElement", None)
+            if element is not None and (_prop(element, PROP_NAME, "") or "").strip() in self.EQ_CAPTIONS:
+                return True
+        return super(SingleAmpXProfile, self).passedOver(obj)

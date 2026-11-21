@@ -509,6 +509,16 @@ class NollyProfile(ArchetypeXProfile):
     # rockers and of the input mode switch are not taken over: the Nolly draws them otherwise.
     switchProbes = NOLLY_SWITCH_PROBES
     tipProbes = NOLLY_TIP_PROBES
+    # The self-check's boxes (core.AmpProfile.screenReferences), of the kind archetypex.py's
+    # TOP_BAR_REFERENCES are, in the Nolly's warmer top bar, chosen by
+    # tools\probe\Find-ScreenReferences.py from its driven run (18 pictures, every section and
+    # amplifier), where each read alike within 0.4, its captions taken whole.
+    screenReferences = (
+        (4 / 1024.0, 4 / 782.0, 6 / 1024.0, 6 / 782.0, (28.0, 27.0, 27.0)),
+        (1014 / 1024.0, 124 / 782.0, 6 / 1024.0, 6 / 782.0, (28.0, 27.0, 27.0)),
+        (345 / 1024.0, 84 / 782.0, 80 / 1024.0, 14 / 782.0, (71.4, 70.5, 70.5)),
+        (909 / 1024.0, 84 / 782.0, 53 / 1024.0, 14 / 782.0, (67.1, 66.3, 66.3)),
+    )
 
     # ---------- telling the views and the amplifiers apart ----------
 

@@ -144,6 +144,19 @@ STATE_SETTLE_FIRST_MS = 600
 # A tip reading needs one spot clearly brighter than the other. Measured on the Petrucci's
 # screenshots the gaps run 55 to 163 grey levels; anything closer is reported as unknown.
 TIP_MIN_GAP = 20
+# The self-check (AmpController.screenAsMeasured): how far, in each of red, green and blue, a
+# reference may read from what it read on Hadi's machine before no switch is read. On his machine a
+# plug-in's references read alike within 2.5 on every saved picture, across sections and days, and
+# within 3.4 with the editor drawn at 0.75 to 1.5 times its size; HDR's lifted blacks, a tint, a
+# window over the editor, or the picture darkened to 0.8 move one of them by 12 or more.
+SCREEN_REFERENCE_TOLERANCE = 10
+# The mask the X plug-ins draw over the whole editor while their tuner, MIDI mappings window or
+# another dialog is open: black at alpha 128 (their skins' modalOverlay, "80000000"), which leaves
+# every colour at 127/255 of itself.
+MODAL_MASK = 127 / 255.0
+# A colour reading (AmpProfile.colourProbes) says nothing where the box's brightest colour is
+# darker than this: there is too little light to tell a colour by.
+COLOUR_MIN_LIGHT = 20
 
 # A sixth entry of a switch probe: its threshold is then not a grey level but a share of the
 # brightest point of the control's own rectangle (see AmpController.switchPosition). For a
@@ -683,12 +696,30 @@ class AmpProfile(object):
     # and the optional sample box as client fractions. With PROBE_OF_PEAK the threshold is a
     # share, 0 to 1, of the brightest point of the control's own rectangle.
     switchProbes = {}
+    # The self-check: boxes of the editor that look the same whatever it shows, at any size, as
+    # ((x, y, w, h, (red, green, blue)), ...), as fractions of the editor's width and height, with
+    # the colour each read on Hadi's machine. Before any switch is
+    # read the screen is held against them (AmpController.screenAsMeasured), and while one reads
+    # otherwise no switch says a position. None for a profile that has no references.
+    screenReferences = ()
+
+    def modalShowing(self, controller):
+        """True while the plug-in draws its modal mask over the whole editor (see MODAL_MASK)."""
+        return False
+
     # The sample box, as client fractions.
     switchProbeSize = (0.0120, 0.0163)
     # Switches read by where the handle's bright metal tip is, which needs no threshold:
     # label -> ((x0, y0), (x1, y1), box, (word0, word1)). The two spots and the box size are
     # fractions of the switch's own rectangle; word0 is said when spot 0 is the brighter one.
     tipProbes = {}
+    # label -> ((x, y), box, onAtLeast, offAtMost, (onWord, offWord)), the box's corner and side as
+    # fractions of the switch's own rectangle. The reading is the box's mean of blue less red,
+    # divided by its mean of the brightest of red, green and blue: how blue the box is for how
+    # bright it is, which a darkening that is even over the box leaves as it is. A lamp that glows
+    # blue when lit is read this way, which grey barely sees (blue weighs 0.114 in it). At or above
+    # onAtLeast says onWord, at or below offAtMost offWord, anything between nothing.
+    colourProbes = {}
     # Stops in the application's own Tab ring that do nothing - lamps, dimming layers. Tab and
     # Shift+Tab move straight past them, silently, and focus never lands on them on purpose.
     decorativeNames = frozenset()
@@ -709,7 +740,7 @@ class AmpProfile(object):
 
     def readsSwitchState(self, label):
         """True when this amp knows how to read the switch with this label off the screen."""
-        return bool(label) and (label in self.switchProbes or label in self.tipProbes)
+        return bool(label) and (label in self.switchProbes or label in self.tipProbes or label in self.colourProbes)
     # HelpText prefixes marking one-of-N button groups (amp type, cab type).
     groupPrefixes = ()
     # The section views, in the order their buttons appear.
@@ -760,6 +791,11 @@ class AmpProfile(object):
     def decorateName(self, obj, base):
         """A final chance to dress a control's spoken name with context."""
         return base
+
+    def inactiveWord(self, obj):
+        """"inactive" for a control the amplifier has disabled as it is now set, or "": said after
+        the control's name and, for a switch, its position (AmpObject._get_name)."""
+        return ""
 
     def dropPressedState(self, obj):
         """True when the control's UIA toggle state must not be spoken.
@@ -1868,6 +1904,73 @@ class AmpController(object):
                     brightest = value
         return brightest or None
 
+    def meanColour(self, left, top, width, height):
+        """Mean (red, green, blue) over a box of the screen, or None if it cannot be seen, as
+        meanGrey: a capture of nothing but black is a covered or minimised window."""
+        left, top, width, height = int(left), int(top), int(width), int(height)
+        if width <= 0 or height <= 0 or left < -10000 or top < -10000:
+            return None
+        try:
+            bitmap = screenBitmap.ScreenBitmap(width, height)
+            pixels = bitmap.captureImage(left, top, width, height)
+        except Exception:
+            log.debugWarning("neuralAccess: could not sample the screen", exc_info=True)
+            return None
+        red = green = blue = 0
+        for y in range(height):
+            scanline = pixels[y]
+            for x in range(width):
+                pixel = scanline[x]
+                red += pixel.rgbRed
+                green += pixel.rgbGreen
+                blue += pixel.rgbBlue
+        if not (red or green or blue):
+            return None
+        count = float(width * height)
+        return (red / count, green / count, blue / count)
+
+    def screenAsMeasured(self):
+        """True when the screen shows the editor as it looked on Hadi's machine, where every
+        switch reading was measured: each of the profile's screenReferences reads within
+        SCREEN_REFERENCE_TOLERANCE of its own colour, or of that colour under the modal mask while
+        the tuner or MIDI window is open. False otherwise, and then no switch says a position,
+        since on a screen that looks otherwise (another size, HDR, a tint, a window over the
+        editor) a reading could say the wrong one. True for a profile with no references."""
+        references = self.profile.screenReferences
+        if not references:
+            return True
+        cache = getattr(self, "_stateCache", None)
+        now = time.time()
+        if cache is not None:
+            cached = cache.get("screenAsMeasured")
+            if cached is not None and (now - cached[0]) < STATE_CACHE_TTL:
+                return cached[1]
+        answer, reason = True, ""
+        geometry = self.clientGeometry()
+        if not geometry:
+            answer, reason = False, "the editor's size is not known"
+        else:
+            left, top, width, height = geometry
+            scale = MODAL_MASK if self.profile.modalShowing(self) else 1.0
+            for x, y, w, h, colour in references:
+                seen = self.meanColour(int(round(left + x * width)), int(round(top + y * height)),
+                                       max(1, int(round(w * width))), max(1, int(round(h * height))))
+                wanted = tuple(value * scale for value in colour)
+                if seen is None or any(abs(s - w) > SCREEN_REFERENCE_TOLERANCE for s, w in zip(seen, wanted)):
+                    answer = False
+                    reason = "the box at %.4f, %.4f read %s where %s was measured" % (
+                        x, y, "nothing" if seen is None else "(%.0f, %.0f, %.0f)" % seen,
+                        "(%.0f, %.0f, %.0f)" % wanted)
+                    break
+        if cache is not None:
+            cache["screenAsMeasured"] = (now, answer)
+        if answer != getattr(self, "_screenLast", None):
+            self._screenLast = answer
+            STATE_LOG("neuralAccess: the screen is %s" % (
+                "as measured; switch positions are said" if answer
+                else "not as measured (%s); switch positions are not said" % reason))
+        return answer
+
     def meanGrey(self, left, top, width, height):
         """Mean grey over a box of the screen, or None if it cannot be seen.
 
@@ -1947,7 +2050,10 @@ class AmpController(object):
         """The word for a switch's current position, or None when it cannot be read."""
         probe = self.profile.switchProbes.get(label)
         tip = self.profile.tipProbes.get(label)
-        if (probe is None and tip is None) or not rect or len(rect) < 4:
+        colour = self.profile.colourProbes.get(label)
+        if (probe is None and tip is None and colour is None) or not rect or len(rect) < 4:
+            return None
+        if not self.screenAsMeasured():
             return None
         geometry = self.clientGeometry()
         if not geometry:
@@ -1957,7 +2063,9 @@ class AmpController(object):
         cached = self._stateCache.get(key)
         if cached is not None and (now - cached[0]) < STATE_CACHE_TTL:
             return cached[1]
-        if tip is not None:
+        if colour is not None:
+            word = self._colourPosition(label, rect, colour)
+        elif tip is not None:
             word = self._tipPosition(label, rect, tip)
         else:
             _left, _top, width, height = geometry
@@ -1984,15 +2092,38 @@ class AmpController(object):
         self._stateCache[key] = (now, word)
         return word
 
+    def _colourPosition(self, label, rect, probe):
+        """How blue a box of the switch is for how bright it is (see AmpProfile.colourProbes)."""
+        (x, y), box, onAtLeast, offAtMost, words = probe
+        left, top, width, height = rect[:4]
+        size = max(1, int(round(box * width)))
+        colour = self.meanColour(int(round(left + x * width)), int(round(top + y * height)), size, size)
+        share = None
+        if colour is not None and max(colour) >= COLOUR_MIN_LIGHT:
+            share = (colour[2] - colour[0]) / max(colour)
+        word = None
+        if share is not None:
+            if share >= onAtLeast:
+                word = words[0]
+            elif share <= offAtMost:
+                word = words[1]
+        STATE_LOG("neuralAccess: %s colour %s -> %r" % (label, "None" if share is None else "%.3f" % share, word))
+        return word
+
     def _tipPosition(self, label, rect, tip):
-        """Which of two spots holds the handle's bright tip. None when neither clearly does."""
-        (x0, y0), (x1, y1), box, words = tip
+        """Which of two spots holds the handle's bright tip. None when neither clearly does. A
+        fifth entry, where there is one, is how far apart the spots must be instead of
+        TIP_MIN_GAP: for a switch the plug-in sometimes draws dimmed, whose spots then stand
+        closer, and whose readings never lean the wrong way by as much (the Soldano's BRIGHT and
+        MODE)."""
+        (x0, y0), (x1, y1), box, words = tip[:4]
+        gap = tip[4] if len(tip) > 4 else TIP_MIN_GAP
         left, top, width, height = rect[:4]
         boxW = max(1, int(round(box * width)))
         boxH = max(1, int(round(box * height)))
         grey0 = self.meanGrey(left + x0 * width, top + y0 * height, boxW, boxH)
         grey1 = self.meanGrey(left + x1 * width, top + y1 * height, boxW, boxH)
-        if grey0 is None or grey1 is None or abs(grey0 - grey1) < TIP_MIN_GAP:
+        if grey0 is None or grey1 is None or abs(grey0 - grey1) < gap:
             word = None
         else:
             word = words[0] if grey0 > grey1 else words[1]
@@ -2733,7 +2864,11 @@ class AmpObject(UIA):
         # are two-position switches on a guitar amplifier and the words printed on the panel are
         # the right domain language. One-of-N buttons do use a real state; see _get_role.
         state = self.ampStateWord
-        return "%s, %s" % (base, state) if state else base
+        name = "%s, %s" % (base, state) if state else base
+        # A control the amplifier has disabled as it is now set says so after its name and
+        # position, said once as focus lands rather than after every arrow key's value.
+        inactive = profile.inactiveWord(self) if profile is not None and name else ""
+        return "%s, %s" % (name, inactive) if inactive else name
 
     def _get_description(self):
         # NVDA maps UIA HelpText to the description. Once it has been promoted to the name,
