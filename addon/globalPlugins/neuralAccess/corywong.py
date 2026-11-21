@@ -312,38 +312,47 @@ def _rocker(x, y, words):
 CORY_SWITCH_PROBES = {
     "Gate switch": _rocker(9, 4, ("gate on", "gate off")),
     "Doubler switch": _rocker(9, 4, ("doubler on", "doubler off")),
-    "Gate": _rocker(38 + 9, 5 + 4, ("on", "off")),
-    "Doubler": _rocker(58 + 9, 5 + 4, ("on", "off")),
-    # WAH (60 wide) and AUTO-WAH (89), with their rockers 34 and 67 pixels in.
+    # A caption that is itself the switch (GATE, DOUBLER, WAH, AUTO-WAH, ROOM SEND) is read at its
+    # rocker's own rectangle (switchAnchor), not at an offset from the caption's corner: at 0.75
+    # times the two round differently, and AUTO-WAH on read "off" (the final review, 2026-11-21).
+    "Gate": _rocker(9, 4, ("on", "off")),
+    "Doubler": _rocker(9, 4, ("on", "off")),
     "Wah switch": _rocker(9, 4, ("wah on", "wah off")),
     "Auto wah switch": _rocker(9, 4, ("auto wah on", "auto wah off")),
-    "Wah": _rocker(34 + 9, 5 + 4, ("on", "off")),
-    "Auto wah": _rocker(67 + 9, 5 + 4, ("on", "off")),
+    "Wah": _rocker(9, 4, ("on", "off")),
+    "Auto wah": _rocker(9, 4, ("on", "off")),
     "Left room switch": _rocker(9, 4, ("room send on", "room send off")),
     "Right room switch": _rocker(9, 4, ("room send on", "room send off")),
-    "Left room send": _rocker(72 + 9, 5 + 4, ("on", "off")),
-    "Right room send": _rocker(72 + 9, 5 + 4, ("on", "off")),
+    "Left room send": _rocker(9, 4, ("on", "off")),
+    "Right room send": _rocker(9, 4, ("on", "off")),
     # A microphone's on/off button, at the Nolly's place. Its background is light while the
-    # microphone is on (1.00 of the button's brightest point on the run's left side) and drawn
-    # dimmed while it is off (0.71 on the right side), the mirror of the Nolly's.
-    "Left microphone switch": (0.01367, 0.03325, 0.85, ("off", "on"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
-    "Right microphone switch": (0.01367, 0.03325, 0.85, ("off", "on"), (0.00391, 0.00512), engine.PROBE_OF_PEAK),
+    # microphone is on and filled with a darker grey, its symbol light, while it is off, so the box
+    # stands at the button's brightest point on (1.00 of the way from its darkest, the symbol's
+    # stroke, on the run's left side) and at its darkest off (0.00 on the right side): the mirror of
+    # the Nolly's.
+    "Left microphone switch": (0.01367, 0.03325, 0.5, ("off", "on"), (0.00391, 0.00512), engine.PROBE_OF_RANGE),
+    "Right microphone switch": (0.01367, 0.03325, 0.5, ("off", "on"), (0.00391, 0.00512), engine.PROBE_OF_RANGE),
     # PHASE, at the Nolly's place: the symbol is dark here, so the dot it gains when inverted is
-    # dark too. Both sides read 0.95 of the button's brightest point, normal, in the run.
-    "Left phase": (0.05176, 0.00639, 0.6, ("inverted", "normal"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
-    "Right phase": (0.05176, 0.00639, 0.6, ("inverted", "normal"), (0.00293, 0.00384), engine.PROBE_OF_PEAK),
+    # dark too. Both sides read 0.92 and 0.82 of the way, normal, in the run (the right side faded,
+    # its microphone off). Against the brightest point alone, as until the final review, a dot on a
+    # faded side stayed above the line and said "normal" (2026-11-21).
+    "Left phase": (0.05176, 0.00639, 0.5, ("inverted", "normal"), (0.00293, 0.00384), engine.PROBE_OF_RANGE),
+    "Right phase": (0.05176, 0.00639, 0.5, ("inverted", "normal"), (0.00293, 0.00384), engine.PROBE_OF_RANGE),
     # 2. Lamps read where they stand (switchAnchor gives the lamp's own rectangle): the mean of a
-    #    box in the lamp against the lamp's brightest point. Rebuilt lit and unlit in four ways of
-    #    scaling, with the box a pixel off every way, the EQ's lamp reads 0.88 to 0.93 lit and 0.24
-    #    to 0.43 unlit with a box of 6 pixels at its middle; the Funk's and the Snob's power lamps
-    #    0.91 to 1.00 lit and 0.07 to 0.56 unlit with the one pixel at their middle. The Clean's
-    #    unlit lamp, on its green panel, can read as bright as a lit one, and the Cab miniatures'
-    #    lamps are 3 pixels: those power switches have no reading.
-    "EQ power": (7 / 1024.0, 7 / 782.0, 0.65, ("off", "on"), (6 / 1024.0, 6 / 782.0), engine.PROBE_OF_PEAK),
-    "Funk amp power switch": (3 / 1024.0, 3 / 782.0, 0.73, ("amp off", "amp on"), (1 / 1024.0, 1 / 782.0),
-                              engine.PROBE_OF_PEAK),
-    "Snob amp power switch": (3 / 1024.0, 3 / 782.0, 0.73, ("amp off", "amp on"), (1 / 1024.0, 1 / 782.0),
-                              engine.PROBE_OF_PEAK),
+    #    box in the lamp against the way from the lamp's darkest point to its brightest. Rebuilt lit
+    #    and unlit in four ways of scaling, with the box a pixel off every way, the EQ's lamp reads
+    #    0.82 to 0.91 lit and 0.13 to 0.36 unlit with a box of 6 pixels at its middle; the Funk's
+    #    and the Snob's power lamps 0.68 to 1.00 lit and 0.00 to 0.53 unlit with the one pixel at
+    #    their middle (probe-results\corywong-measures\measure_lamps.py --range). That way, unlike
+    #    the brightest point alone, is the same however the plug-in fades a section that is off,
+    #    towards black or towards its pink. The Clean's unlit lamp, on its green panel, can read as
+    #    bright as a lit one, and the Cab miniatures' lamps are 3 pixels: those power switches have
+    #    no reading.
+    "EQ power": (7 / 1024.0, 7 / 782.0, 0.6, ("off", "on"), (6 / 1024.0, 6 / 782.0), engine.PROBE_OF_RANGE),
+    "Funk amp power switch": (3 / 1024.0, 3 / 782.0, 0.6, ("amp off", "amp on"), (1 / 1024.0, 1 / 782.0),
+                              engine.PROBE_OF_RANGE),
+    "Snob amp power switch": (3 / 1024.0, 3 / 782.0, 0.6, ("amp off", "amp on"), (1 / 1024.0, 1 / 782.0),
+                              engine.PROBE_OF_RANGE),
 }
 # The tuner window's mute button has no reading here: the run did not open the tuner, and the
 # reading every other X plug-in shares was measured on a dark window.
@@ -358,6 +367,13 @@ def _lampSpots(lamp, a, b, stomp, words, gap=None):
     probe = (((lx + a[0] - sx) / 70.0 + 0.0001, (ly + a[1] - sy) / 70.0 + 0.0001),
              ((lx + b[0] - sx) / 70.0 + 0.0001, (ly + b[1] - sy) / 70.0 + 0.0001), 5 / 70.0, words)
     return probe if gap is None else probe + (gap,)
+
+
+def _miniSpots(a, b, words, gap):
+    """A Cab miniature toggle's two 2 pixel spots, each corner in the 14 pixel switch, the first word
+    said when the first spot is the brighter by gap or more."""
+    return ((a[0] / 14.0 + 0.0001, a[1] / 14.0 + 0.0001), (b[0] / 14.0 + 0.0001, b[1] / 14.0 + 0.0001), 2 / 14.0,
+            words, gap)
 
 
 # 3. Two spots, the first word said when the first spot is the brighter by 20 or more.
@@ -395,6 +411,24 @@ CORY_TIP_PROBES = {
     "Chorus pedal": _lampSpots((166, 409), (7, 8), (10, 1), (139, 523), ("on", "off")),
     "Delay pedal": _lampSpots((363, 466), (7, 9), (10, 1), (336, 474), ("on", "off")),
     "Wash pedal": _lampSpots((846, 408), (6, 9), (1, 1), (819, 521), ("on", "off")),
+    # The Cab view's miniature toggles, 14 pixels: 2 pixel spots, each pair speaking at a distance
+    # of its own (the fifth entry), above the furthest it leans the wrong way over the four ways of
+    # scaling and a pixel's shift and at most two thirds of how far apart it stands at the
+    # plug-in's own size (probe-results\corywong-measures\mini_pairs.py). The Funk's attack: 101.4
+    # and 104.3 apart, leaning 41.5 at worst, speaking at 55. Its frequency switches and the Snob's
+    # Bright and Drive: 117.2 and 124.7 apart, leaning 53.0, speaking at 65. The Clean's Bright is
+    # read at the Snob's spots: the pair the search chose for it (11,1 and 6,8, one spot steady on
+    # the panel) said "on" for off with the whole editor drawn at 0.75 times, 57 apart, past any
+    # threshold that still lets it speak; the Snob's pair, whose spots move apart, is silent there
+    # and right at full size and at 1.5 times. Added after 0.16.1, on Hadi's question whether they
+    # could be read (2026-11-21).
+    "Mini Comp attack": _miniSpots((5, 11), (6, 8), ("slow", "fast"), 55),
+    "Mini Lows frequency": _miniSpots((6, 8), (6, 10), ("225 hertz", "150 hertz"), 65),
+    "Mini Mids frequency": _miniSpots((6, 8), (6, 10), ("900 hertz", "600 hertz"), 65),
+    "Mini Highs frequency": _miniSpots((6, 8), (6, 10), ("4 kilohertz", "2.5 kilohertz"), 65),
+    "Mini Clean bright switch": _miniSpots((6, 10), (6, 8), ("on", "off"), 65),
+    "Mini Snob bright switch": _miniSpots((6, 10), (6, 8), ("on", "off"), 65),
+    "Mini Drive switch": _miniSpots((6, 10), (6, 8), ("on", "off"), 65),
 }
 
 POWER_STATE_KEYS = {"Funk": "Funk amp power switch", "Clean": "Clean amp power switch",
@@ -418,6 +452,10 @@ CORY_TOP_BAR_REFERENCES = (
 # editor): the lamp is 15 pixels above the switch's top and 7 right of its left edge.
 EQ_LAMP_CENTRE = (0.6330, 0.8018)
 POWER_LAMP_REACH = (0.03, 0.012)
+# The captions that are switches, read at the rocker inside each (switchAnchor): the rockers are
+# 20 pixels wide (0.0195 of the editor).
+CAPTION_SWITCHES = frozenset(("Gate", "Doubler", "Wah", "Auto wah", "Left room send", "Right room send"))
+ROCKER_WIDTH = (0.015, 0.025)
 
 
 class CoryWongProfile(LinkedAmpsXProfile):
@@ -545,6 +583,16 @@ class CoryWongProfile(LinkedAmpsXProfile):
         """Funk has eight knobs and four switches, Clean six and one, Snob seven and two."""
         return {(8, 4): 0, (6, 1): 1, (7, 2): 2}.get((len(knobs), len(switches)))
 
+    def stateLabel(self, obj):
+        """The Cab view's miniature Bright switch is read at other spots on the Clean amplifier than
+        on the Snob, so its reading is filed per amplifier, as the Nolly's is."""
+        label = super(CoryWongProfile, self).stateLabel(obj)
+        if label == "Mini Bright switch":
+            controller = obj.ampController
+            mini = self.cabMiniPanel(controller) if controller is not None else None
+            return "Mini %s bright switch" % mini["name"] if mini else ""
+        return label
+
     # ---------- the lamps ----------
 
     def positionalLabel(self, obj, controller):
@@ -581,6 +629,9 @@ class CoryWongProfile(LinkedAmpsXProfile):
         """The lamp's own rectangle for a switch read off its lamp (EQ power, the Funk's and the
         Snob's power switches); the switch's own for the rest. None when the lamp is not found,
         and then nothing is said."""
+        if label in CAPTION_SWITCHES:
+            return controller._positionalSweep("rockerRect:%d,%d" % (int(rect[0]), int(rect[1])),
+                                               lambda: self._rockerIn(controller, rect))
         if label == "EQ power":
             return controller._positionalSweep("eqLampRect", lambda: self._lampRect(
                 controller, lambda cx, cy, w: abs(cy - EQ_LAMP_CENTRE[0]) <= 0.02
@@ -598,6 +649,25 @@ class CoryWongProfile(LinkedAmpsXProfile):
             return controller._positionalSweep("powerLampRect:%d,%d" % (int(rect[0]), int(rect[1])),
                                                lambda: self._lampRect(controller, near))
         return rect
+
+    def _rockerIn(self, controller, rect):
+        """The rectangle of the nameless 20 by 12 rocker standing inside a caption switch's own
+        rectangle, or None."""
+        geometry = controller.clientGeometry()
+        if not geometry or not rect or len(rect) < 4:
+            return None
+        width = geometry[2]
+        for element in controller.findElements(controlType=CT_BUTTON):
+            if _prop(element, PROP_NAME, "") or _prop(element, PROP_HELP_TEXT, ""):
+                continue
+            found = _prop(element, PROP_BOUNDING_RECT)
+            if not found or len(found) < 4 or found[2] <= 0:
+                continue
+            if ROCKER_WIDTH[0] <= found[2] / float(width) <= ROCKER_WIDTH[1] \
+                    and rect[0] <= found[0] and found[0] + found[2] <= rect[0] + rect[2] + 1 \
+                    and rect[1] <= found[1] and found[1] + found[3] <= rect[1] + rect[3] + 1:
+                return tuple(found[:4])
+        return None
 
     def _lampRect(self, controller, wanted):
         for element in controller.findElements(controlType=CT_BUTTON):
