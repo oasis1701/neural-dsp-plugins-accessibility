@@ -1,6 +1,6 @@
 # Neural DSP Plugins Accessibility
 
-This NVDA add-on makes four Neural DSP guitar plug-ins usable with a screen reader, the Archetype Petrucci X, the Archetype Nolly X, the Fortin Nameless Suite X and the Soldano SLO-100 X. It names their controls, says knob values and switch positions, and adds single keys for things a mouse user does at a glance, such as switching sections, stepping through presets, running the tuner and checking levels.
+This NVDA add-on makes five Neural DSP guitar plug-ins usable with a screen reader, the Archetype Petrucci X, the Archetype Nolly X, the Fortin Nameless Suite X, the Soldano SLO-100 X and the Archetype Cory Wong X. It names their controls, says knob values and switch positions, and adds single keys for things a mouse user does at a glance, such as switching sections, stepping through presets, running the tuner and checking levels.
 
 For the best results, install the VST3 versions of the plug-ins and use them inside REAPER. That is where the add-on is tested. The standalone applications are still being worked on and tested.
 

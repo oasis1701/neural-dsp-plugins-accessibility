@@ -2,7 +2,9 @@
 
 ## 0.16.2 (2026-11-21)
 
-- First support for the Archetype Cory Wong X, for testing. Its controls have the names its panels print, its three amplifiers, the cabinet selectors and the amp and cab link work as on the Nolly X, and the number keys, the brackets and Tab work in its six sections. It is drawn light, so its switch readings are its own.
+- First support for the Archetype Cory Wong X. Its controls have the names its panels print, its switches and pedals say their positions, and the number keys, the brackets and Tab work in its six sections. Its three amplifiers, Funk, Clean and Snob, the cabinet selectors and the amp and cab link work as on the Nolly X, with A, C and Control+A.
+- The Cory Wong X is drawn light where the other X plug-ins are dark, so the add-on reads its switches in its own way and checks the screen against the Cory Wong's own colours before saying a position.
+- On the Cory Wong X, the Clean amplifier's power switch, the small amplifier's power switch in the Cab section and the tuner's mute button say no position. The delay's TIME R knob says "inactive" while the delay is on SINGLE.
 
 ## 0.15.3 (2026-11-21)
 
