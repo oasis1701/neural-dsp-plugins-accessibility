@@ -1,6 +1,6 @@
 # Neural DSP Plugins Accessibility
 
-This NVDA add-on makes two Neural DSP guitar plug-ins usable with a screen reader, the Archetype Petrucci X and the Archetype Nolly X. It names their controls, says knob values and switch positions, and adds keys for things a mouse user does at a glance.
+This NVDA add-on makes three Neural DSP guitar plug-ins usable with a screen reader, the Archetype Petrucci X, the Archetype Nolly X and the Fortin Nameless Suite X. It names their controls, says knob values and switch positions, and adds keys for things a mouse user does at a glance.
 
 For the best results, install the VST3 versions of the plug-ins and use them inside REAPER. That is where the add-on is tested. The standalone applications are still being worked on and tested.
 
@@ -36,6 +36,14 @@ The Nolly X has five sections.
 
 On the Nolly X the amplifier and the cabinet are linked, so choosing an amplifier brings its own cabinet. Unlink them with Control+A to pair any amplifier with any cabinet.
 
+The Fortin Nameless Suite X has five sections.
+
+- **1, Pre Effects.** The Zuul noise gate, the Hexdrive overdrive and the Grind booster pedals.
+- **2, Amp.** One amplifier, the Nameless.
+- **3, Cab.** Two microphones, each with a room send, and the amplifier's controls again in small.
+- **4, EQ.** A nine-band graphic equaliser with high-pass and low-pass filters.
+- **5, Post Effects.** Delay and reverb pedals.
+
 ## The top and bottom bars
 
 Two bars stay the same whichever section you are in.
@@ -53,7 +61,7 @@ The top bar holds these controls.
 
 The bottom bar holds these controls.
 
-- The amplifier selectors. On the Nolly X there are cabinet selectors and an amp and cab link as well.
+- The amplifier selectors. On the Nolly X there are cabinet selectors and an amp and cab link as well. The Fortin has one amplifier and no selectors.
 - Tuner, which opens the tuner
 - MIDI, which opens the MIDI mappings window
 
@@ -64,7 +72,7 @@ All of these keys work while you are inside the plug-in.
 ### Moving around
 
 - **Tab** and **Shift+Tab** move to the next and previous control.
-- **1** to **7** go to a section, and focus lands on its first control. The Nolly X uses 1 to 5.
+- **1** to **7** go to a section, and focus lands on its first control. The Nolly X and the Fortin use 1 to 5.
 - **Left Bracket** and **Right Bracket** move to the previous and next module of the section, such as a pedal, an effects unit, a microphone or the top bar.
 - **R** moves to the Transpose knob.
 - **P** moves to the preset display and opens the list of presets.
@@ -87,7 +95,7 @@ All of these keys work while you are inside the plug-in.
 
 ### Amplifiers and presets
 
-- **A** selects the next amplifier, going round.
+- **A** selects the next amplifier, going round. The Fortin has one amplifier, and A says so.
 - **C** selects the next cabinet, going round, on the Nolly X while the amp and cab are unlinked.
 - **Control+A** links or unlinks the amplifier and the cabinet, on the Nolly X.
 - **Comma** and **Period** load the previous and next preset and say its name.
@@ -114,3 +122,5 @@ Both say the new state, and focus stays where it was.
 - Every command is listed under "Neural DSP Plugins Accessibility" in NVDA's Input Gestures dialog, where you can change its key.
 - RESET, under More preset actions, puts every control in the plug-in back to its default and cannot be undone. The first Enter only says what it would do. Press Enter again within ten seconds to carry it out. Any other key cancels it.
 - DELETE, shown for your own presets, asks with the plug-in's own question before it deletes. Cancel is chosen first, so Enter deletes only after you Tab to "Yes, delete".
+- On the Fortin, the Pull gain switch and the small power and standby switches in the Cab section do not say their position. The power and standby switches in the Amp section do.
+- The Fortin's amplifier has two looks, Original and Blackout, and clicking the Fortin logo switches between them. The add-on is made for the Original look, and Tab skips the logo. On Blackout, some of the amplifier's switches may not say their position.
