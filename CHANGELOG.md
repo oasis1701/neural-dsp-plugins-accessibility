@@ -2,8 +2,8 @@
 
 ## 0.14.2 (2026-11-20)
 
-- First support for the Fortin Nameless Suite X. Its controls have names, its switches say their positions on the amp's Original skin, and the number keys, the brackets and Tab work in its five sections.
-- Choosing Enable MIDI Learn from a control's menu could say nothing, and the control then did not say that it was waiting. It now says "MIDI learn on" every time.
+- First support for the Fortin Nameless Suite X. Its controls have names, its switches say their positions on the amp's Original look, and the number keys, the brackets and Tab work in its five sections.
+- Choosing Enable MIDI Learn from a control's menu sometimes said nothing, because the menu closed before the add-on had noted the choice, and the control then did not say that it was waiting. It now says "MIDI learn on" in that case.
 
 ## 0.13.10 (2026-11-16)
 
